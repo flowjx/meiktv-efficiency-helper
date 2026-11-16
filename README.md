@@ -66,6 +66,7 @@
 2. 双击 `server/启动上报服务.bat` 或执行 `python server/install_server.py`，默认监听 `0.0.0.0:8790`。首次启动会生成查看口令 `admin_key` 写回配置文件。
 3. 浏览器打开 `http://<服务器IP>:8790/installs?key=<admin_key>` 查看安装明细。
 4. 同事电脑要能访问这台机器的 8790 端口（Windows 防火墙需放行入站）。
+5. 开机自启：在“启动”文件夹（`shell:startup`）放一个 vbs，隐藏窗口执行 `python install_server.py >> server.log 2>&1`（vbs 含中文路径时要存成 UTF-16 编码）。
 
 ## 安装
 

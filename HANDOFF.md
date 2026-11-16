@@ -84,6 +84,7 @@ Chrome/Edge **Manifest V3 内容脚本插件**，给魅KTV 内部后台加"批�
 
 - 链路：插件 background.js → `UPDATE_CONFIG.reportUrl`（当前 `http://172.16.5.36:8790/api/ping`，是维护者本机局域网 IP）→ `server/install_server.py` → 本机 MySQL `meiktv_business.helper_install`。
 - 上报时机：安装/重新加载时立即、浏览器启动和每次定时检查时（节流 60 分钟）、禅道识别到的姓名部门职位变化时立即。上报字段：client_id（随机 UUID）、版本、浏览器、系统、姓名、部门、职位；服务端记录来源 IP、首次/最后时间、次数。
+- **开机自启**（2026-11-16 配置）：`%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\meiktv-helper-install-server.vbs`，登录 Windows 后隐藏窗口启动服务，输出追加到 `server/server.log`（已 gitignore）。脚本里写死了插件目录和 python 路径（`...\Python311\python.exe`），目录或 Python 换了要改这个 vbs；不想自启就删掉它。重复启动时第二个实例端口被占会直接退出。手动停服务：`Get-NetTCPConnection -LocalPort 8790 -State Listen | % { Stop-Process -Id $_.OwningProcess }`。
 - 服务要一直开着，同事才能上报；本机 IP 变了要改 `update-config.js` 和 manifest `host_permissions` 再发版。同事访问需要本机防火墙放行 8790 入站。
 - 2026-11-16 已联调：模拟插件上报（匿名 → 带姓名）、口令校验（无口令 403）、非法 client_id 拒绝、明细页渲染均正常，测试行已删除。
 

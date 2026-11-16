@@ -7,3 +7,4 @@ __pycache__/
 .DS_Store
 Thumbs.db
 server/config.local.json
+server/server.log
