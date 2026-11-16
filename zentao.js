@@ -522,10 +522,13 @@
     if (overdue.length) parts.push('', '【已逾期】', ...overdue.map(line));
     const soon = list.filter(isDueSoon);
     if (soon.length) parts.push('', '【今明到期】', ...soon.map(line));
-    const text = parts.join('\n');
+    await copyText(parts.join('\n'));
+    setInfo('摘要已复制到剪贴板');
+  }
+
+  async function copyText(text) {
     try {
       await navigator.clipboard.writeText(text);
-      setInfo('摘要已复制到剪贴板');
     } catch (_) {
       const ta = el('textarea', { class: 'mkz-copy-fallback' });
       ta.value = text;
@@ -533,8 +536,21 @@
       ta.select();
       document.execCommand('copy');
       ta.remove();
-      setInfo('摘要已复制到剪贴板');
     }
+  }
+
+  // 归档：把当前筛选结果里“已完成”的测试单移到归档产品（product = 91），由维护者拿 SQL 去库里执行
+  const ARCHIVE_PRODUCT_ID = 91;
+  async function copyArchiveSql() {
+    const done = visibleRows().filter(r => r.status === 'done' && /^\d+$/.test(r.id));
+    if (!done.length) {
+      setInfo('当前列表里没有“已完成”的测试单（检查是否勾选了“隐藏已完成”）');
+      return;
+    }
+    const sql = done.map(r => `UPDATE \`meiktv_bug\`.\`meiktv_testtask\` SET \`product\` = ${ARCHIVE_PRODUCT_ID} WHERE \`id\` = ${Number(r.id)};`);
+    const header = `-- 归档已完成测试单 ${todayStr()}，共 ${done.length} 条：${done.map(r => `#${r.rawId}`).join(' ')}`;
+    await copyText([header, ...sql].join('\n'));
+    setInfo(`已复制 ${done.length} 条归档 SQL（${done.map(r => `#${r.rawId}`).join('、')}）`);
   }
 
   // ---------- 工具栏 ----------
@@ -572,6 +588,10 @@
         el('button', { type: 'button', class: 'btn btn-sm', text: '刷新进度', onclick: () => loadAllProgress(true) }),
         el('button', { type: 'button', class: 'btn btn-sm', text: '导出CSV', onclick: exportCsv }),
         el('button', { type: 'button', class: 'btn btn-sm btn-primary', text: '复制摘要', onclick: copySummary }),
+        el('button', {
+          type: 'button', class: 'btn btn-sm', text: '复制归档SQL', onclick: copyArchiveSql,
+          title: '把当前列表中“已完成”的测试单生成归档 SQL（product 改为 91）并复制'
+        }),
         el('span', { id: 'mkz-info', class: 'mkz-info' })
       ]),
       el('div', { id: 'mkz-stats', class: 'mkz-stats' })
