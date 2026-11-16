@@ -107,10 +107,21 @@
 #taskList tr.mkz-row--blocked > td:first-child { box-shadow: inset 3px 0 0 #e5484d; }
 #taskList tr.mkz-row--done { color: #8c95a6; }
 
-.mkz-progress-th { min-width: 260px; }
+/* 列宽：ID/产品/版本定宽，进度列吃掉剩余宽度（表格是 table-layout: fixed） */
+#taskList th.mkz-col-id { width: 60px; }
+#taskList th.mkz-col-product { width: 120px; }
+#taskList th.mkz-col-build { width: 90px; }
+
+#taskList td.mkz-col-product,
+#taskList td.mkz-col-build {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#taskList td.mkz-col-product .mkz-project-diff { white-space: normal; }
 
 .mkz-progress-td {
-  max-width: 380px;
   font-size: 12px;
   line-height: 1.5;
 }

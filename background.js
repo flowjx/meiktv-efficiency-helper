@@ -46,21 +46,78 @@ async function checkUpdate() {
   return result;
 }
 
+// ---------- 安装明细上报 ----------
+// 上报内容：随机安装ID、插件版本、浏览器、系统，以及在禅道页面识别到的姓名/部门/职位（identity.js 提供）。
+async function getClientId() {
+  const { clientId } = await chrome.storage.local.get('clientId');
+  if (clientId) return clientId;
+  const id = crypto.randomUUID();
+  await chrome.storage.local.set({ clientId: id });
+  return id;
+}
+
+function browserInfo() {
+  const brands = (navigator.userAgentData && navigator.userAgentData.brands) || [];
+  const pick = brands.find(b => /Edge/i.test(b.brand)) || brands.find(b => /Chrome/i.test(b.brand) && !/Chromium/i.test(b.brand))
+    || brands.find(b => !/Not.?A.?Brand/i.test(b.brand));
+  const browser = pick ? `${pick.brand.replace('Microsoft ', '').replace('Google ', '')} ${pick.version}` : (navigator.userAgent.match(/(Edg|Chrome)\/[\d.]+/) || [''])[0];
+  const os = (navigator.userAgentData && navigator.userAgentData.platform) || (navigator.userAgent.match(/Windows|Mac OS X|Linux/) || [''])[0];
+  return { browser, os };
+}
+
+async function report(force) {
+  if (!UPDATE_CONFIG.reportUrl) return;
+  const { lastReportAt = 0, identity = {} } = await chrome.storage.local.get(['lastReportAt', 'identity']);
+  if (!force && Date.now() - lastReportAt < UPDATE_CONFIG.reportIntervalMinutes * 60000) return;
+  const body = {
+    client_id: await getClientId(),
+    version: chrome.runtime.getManifest().version,
+    name: identity.name || '', dept: identity.dept || '', role: identity.role || '',
+    ...browserInfo()
+  };
+  try {
+    const res = await fetch(UPDATE_CONFIG.reportUrl, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), cache: 'no-store'
+    });
+    if (res.ok) await chrome.storage.local.set({ lastReportAt: Date.now(), lastReportError: '' });
+    else await chrome.storage.local.set({ lastReportError: `HTTP ${res.status}` });
+  } catch (e) {
+    // 不在公司网络时连不上很正常，下次再报
+    await chrome.storage.local.set({ lastReportError: e.message || '连接失败' });
+  }
+}
+
+async function onIdentity(identity) {
+  const { identity: old = {} } = await chrome.storage.local.get('identity');
+  const changed = ['name', 'dept', 'role'].some(k => (identity[k] || '') !== (old[k] || ''));
+  await chrome.storage.local.set({ identity: { ...old, ...identity, at: Date.now() } });
+  await report(changed);
+}
+
 chrome.runtime.onInstalled.addListener(() => {
   chrome.alarms.create(ALARM, { periodInMinutes: UPDATE_CONFIG.checkIntervalMinutes });
   checkUpdate();
+  report(true);
 });
 
 chrome.runtime.onStartup.addListener(() => {
   chrome.alarms.create(ALARM, { periodInMinutes: UPDATE_CONFIG.checkIntervalMinutes });
   checkUpdate();
+  report(false);
 });
 
 chrome.alarms.onAlarm.addListener(alarm => {
-  if (alarm.name === ALARM) checkUpdate();
+  if (alarm.name === ALARM) {
+    checkUpdate();
+    report(false);
+  }
 });
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  if (msg && msg.type === 'meiktv-identity' && msg.identity) {
+    onIdentity(msg.identity).then(() => sendResponse({ ok: true }));
+    return true;
+  }
   if (msg && msg.type === 'meiktv-check-update') {
     checkUpdate().then(sendResponse);
     return true;

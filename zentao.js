@@ -173,7 +173,7 @@
   function progressText(row) {
     const p = row.progress;
     if (!p || p.error) return '';
-    return p.comments.map(c => `${shortDate(c.date)} ${c.who}：${c.comment}`).join('\n');
+    return p.comments.map(c => `${shortDate(c.date)} ${c.time} ${c.who}：${c.comment}`).join('\n');
   }
 
   function renderProgress(row) {
@@ -186,7 +186,7 @@
     if (p.comments.length) {
       p.comments.forEach((c, i) => {
         td.appendChild(el('div', { class: `mkz-note${i ? ' mkz-note--old' : ''}`, title: `${c.date} ${c.time} ${c.who}\n${c.comment}` }, [
-          el('span', { class: 'mkz-note__meta', text: `${shortDate(c.date)} ${c.who}` }),
+          el('span', { class: 'mkz-note__meta', text: `${shortDate(c.date)} ${c.time} ${c.who}` }),
           el('span', { class: 'mkz-note__text', text: c.comment })
         ]));
       });
@@ -194,7 +194,7 @@
       td.appendChild(el('span', { class: 'mkz-muted', text: '暂无备注' }));
     }
     if (p.last && (!p.comments.length || p.last.date !== p.comments[0].date || p.last.time !== p.comments[0].time)) {
-      td.appendChild(el('div', { class: 'mkz-last', text: `最近：${shortDate(p.last.date)} ${p.last.who} ${p.last.action}` }));
+      td.appendChild(el('div', { class: 'mkz-last', text: `最近：${shortDate(p.last.date)} ${p.last.time} ${p.last.who} ${p.last.action}` }));
     }
     const d = staleDays(row);
     if (isStale(row)) td.appendChild(el('span', { class: 'mkz-badge mkz-badge--stale', text: `${d} 天无更新` }));
@@ -212,6 +212,15 @@
         productTh.querySelector('a')?.append('/项目');
       }
     }
+    // 表格是 table-layout: fixed，没写宽度的列会平分剩余空间：给 ID/产品/版本定宽，剩下的留给进度列
+    const markCol = (index, cls) => {
+      if (index < 0) return;
+      headRow.cells[index]?.classList.add(cls);
+      rows.forEach(row => row.tr.cells[index]?.classList.add(cls));
+    };
+    markCol(C.id, 'mkz-col-id');
+    markCol(C.product, 'mkz-col-product');
+    markCol(C.build, 'mkz-col-build');
     // 2) 进度列：插在"状态"后
     if (!headRow.querySelector('.mkz-progress-th')) {
       headRow.cells[C.status].insertAdjacentElement('afterend', el('th', { class: 'mkz-progress-th text-left', text: '进度（最新两条备注）' }));
@@ -368,10 +377,10 @@
     const esc = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
     const lines = visibleRows().map(r => {
       const c = r.progress?.comments || [];
-      const fmt = x => (x ? `${x.date} ${x.who}：${x.comment}` : '');
+      const fmt = x => (x ? `${x.date} ${x.time} ${x.who}：${x.comment}` : '');
       const last = r.progress?.last;
       return [r.rawId, r.name, r.product, r.project, r.build, r.owner, r.begin, r.end, STATUS_TEXT[r.status],
-        overdueDays(r) || '', fmt(c[0]), fmt(c[1]), last ? `${last.date} ${last.who} ${last.action}` : ''].map(esc).join(',');
+        overdueDays(r) || '', fmt(c[0]), fmt(c[1]), last ? `${last.date} ${last.time} ${last.who} ${last.action}` : ''].map(esc).join(',');
     });
     const csv = [header.map(esc).join(','), ...lines].join('\r\n');
     const url = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }));

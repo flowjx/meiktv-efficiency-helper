@@ -6,5 +6,8 @@ const UPDATE_CONFIG = {
   get versionUrl() { return `https://raw.githubusercontent.com/${this.repo}/${this.branch}/version.json`; },
   get repoUrl() { return `https://github.com/${this.repo}`; },
   get zipUrl() { return `https://github.com/${this.repo}/archive/refs/heads/${this.branch}.zip`; },
-  checkIntervalMinutes: 360
+  checkIntervalMinutes: 60,
+  // 安装明细上报（server/install_server.py）。改地址时同步改 manifest.json 的 host_permissions。
+  reportUrl: 'http://172.16.5.36:8790/api/ping',
+  reportIntervalMinutes: 60
 };

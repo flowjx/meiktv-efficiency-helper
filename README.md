@@ -49,6 +49,24 @@
 - **导出 CSV**：导出当前筛选结果（含最新两条备注）。
 - **复制摘要**：把当前筛选结果按“被阻塞 / 已逾期 / 今明到期”整理成文字，复制后可直接贴到企微群。
 
+## 安装明细（使用统计）
+
+插件会向公司内网的统计服务（`update-config.js` 里的 `reportUrl`）上报以下信息，用于了解谁在用、是否已更新：
+
+- 随机生成的安装 ID（每个浏览器一个）、插件版本、浏览器及版本、操作系统；
+- 在已登录的禅道页面识别到的**真实姓名、所属部门、职位**（不采集禅道用户名、手机号、邮箱等）。
+
+每小时最多上报一次；不在公司网络时上报失败会自动忽略，不影响使用。
+
+### 统计服务（维护者）
+
+`server/install_server.py`：Python 标准库 + `pymysql`，数据写入 MySQL 表 `helper_install`（首次启动自动建表）。
+
+1. 复制 `server/config.example.json` 为 `server/config.local.json`，填写 MySQL 连接（该文件已在 .gitignore 中，**不要提交**）。
+2. 双击 `server/启动上报服务.bat` 或执行 `python server/install_server.py`，默认监听 `0.0.0.0:8790`。首次启动会生成查看口令 `admin_key` 写回配置文件。
+3. 浏览器打开 `http://<服务器IP>:8790/installs?key=<admin_key>` 查看安装明细。
+4. 同事电脑要能访问这台机器的 8790 端口（Windows 防火墙需放行入站）。
+
 ## 安装
 
 推荐用 git 安装，方便以后更新：
@@ -66,7 +84,7 @@ git clone https://github.com/flowjx/meiktv-efficiency-helper.git
 
 ## 在线更新
 
-插件每 6 小时检查一次仓库里的 `version.json`（浏览器启动时也会检查一次）。有新版本时：
+插件每小时检查一次仓库里的 `version.json`（浏览器启动时也会检查一次）。有新版本时：
 
 - 工具栏插件图标出现红色“新”字角标；
 - 业务页面左下角弹出一次提示条（点“知道了”后，这个版本不再提示）；
@@ -86,7 +104,7 @@ git commit -m "release 2.3.1"
 git push
 ```
 
-脚本会同时改 `manifest.json` 和 `version.json` 的版本号。推送后，已安装的插件最多 6 小时内会提示更新，在弹窗里点“立即检查”可以马上看到。
+脚本会同时改 `manifest.json` 和 `version.json` 的版本号。推送后，已安装的插件最多 1 小时内会提示更新，在弹窗里点“立即检查”可以马上看到。
 
 ## 调试日志
 

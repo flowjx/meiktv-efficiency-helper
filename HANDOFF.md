@@ -24,10 +24,12 @@ Chrome/Edge **Manifest V3 内容脚本插件**，给魅KTV 内部后台加"批�
 | 文件 | 内容 |
 |---|---|
 | `manifest.json` | 匹配规则、`all_frames: true`（op 后台是 iframe 套页面，必须开）、`run_at: document_idle` |
-| `background.js` | service worker：每 6 小时（`chrome.alarms`）拉取仓库里的 `version.json`，和 manifest 版本比较，有新版就加工具栏角标"新"，结果写入 `chrome.storage.local.update` |
+| `background.js` | service worker：每小时（`chrome.alarms`）拉取仓库里的 `version.json`，和 manifest 版本比较，有新版就加工具栏角标"新"，结果写入 `chrome.storage.local.update` |
 | `update-config.js` | 仓库地址、分支、检查间隔。**换仓库只改这里**（background 和 popup 共用） |
 | `popup.html/js/css` | 点击工具栏图标的弹窗：当前/最新版本、更新内容、更新步骤、"立即检查"、"重新加载插件"（`chrome.runtime.reload()`，会从磁盘重新读取已解压的插件） |
 | `update-notice.js` | 注入所有业务页面（排在各 content script 前面）：有新版且用户没点过"知道了"时，在顶层页面左下角提示一次 |
+| `identity.js` | 只注入 bug.meiktv.com 顶层页面：读右上角 `#userNav .user-name`，每天最多拉一次 `m=my&f=profile` 取部门/职位，发给 background 上报。**不取用户名（是手机号）** |
+| `server/install_server.py` | 安装明细上报服务：`POST /api/ping` 写 MySQL 表 `helper_install`（自动建表，按 client_id upsert），`GET /installs?key=` 明细页。配置在 `server/config.local.json`（gitignore，含数据库密码，绝不提交），模板 `config.example.json` |
 | `version.json` | 线上最新版本信息（`version/date/notes/download/history`），插件读的就是 GitHub 上这个文件 |
 | `scripts/bump_version.py` | 发版脚本，同时改 manifest.json 和 version.json |
 | `zentao.js` / `zentao.css` | 禅道测试单列表增强，独立的 content script，和 `content.js` 互不依赖。类名前缀 `mkz-` |
@@ -77,6 +79,13 @@ Chrome/Edge **Manifest V3 内容脚本插件**，给魅KTV 内部后台加"批�
 - raw.githubusercontent.com 有约 5 分钟 CDN 缓存，推送后不一定马上能检查到。
 - 想换成公司内网地址：只改 `update-config.js` 的 URL，并把新域名加进 manifest 的 `host_permissions`。
 - 2026-11-16 用 node 模拟 chrome API 测过版本比较和检查逻辑（有新版、同版、断网三种情况）；弹窗和提示条还没在真实浏览器里装插件看过。
+
+## 5.1 安装明细上报（2026-11-16 新增）
+
+- 链路：插件 background.js → `UPDATE_CONFIG.reportUrl`（当前 `http://172.16.5.36:8790/api/ping`，是维护者本机局域网 IP）→ `server/install_server.py` → 本机 MySQL `meiktv_business.helper_install`。
+- 上报时机：安装/重新加载时立即、浏览器启动和每次定时检查时（节流 60 分钟）、禅道识别到的姓名部门职位变化时立即。上报字段：client_id（随机 UUID）、版本、浏览器、系统、姓名、部门、职位；服务端记录来源 IP、首次/最后时间、次数。
+- 服务要一直开着，同事才能上报；本机 IP 变了要改 `update-config.js` 和 manifest `host_permissions` 再发版。同事访问需要本机防火墙放行 8790 入站。
+- 2026-11-16 已联调：模拟插件上报（匿名 → 带姓名）、口令校验（无口令 403）、非法 client_id 拒绝、明细页渲染均正常，测试行已删除。
 
 ## 6. 安装与调试
 

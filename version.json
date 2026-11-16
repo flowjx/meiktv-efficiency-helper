@@ -1,11 +1,20 @@
 {
-  "version": "2.3.2",
+  "version": "2.3.3",
   "date": "2026-11-16",
   "notes": [
-    "插件弹窗去掉仓库主页链接"
+    "禅道测试单：产品/项目、版本列变窄，进度列加宽；进度时间精确到分钟",
+    "新增安装明细统计（内网上报姓名/部门/职位、版本、浏览器，不采集手机号）",
+    "更新检查间隔改为 1 小时"
   ],
   "download": "https://github.com/flowjx/meiktv-efficiency-helper/archive/refs/heads/main.zip",
   "history": [
+    {
+      "version": "2.3.2",
+      "date": "2026-11-16",
+      "notes": [
+        "插件弹窗去掉仓库主页链接"
+      ]
+    },
     {
       "version": "2.3.1",
       "date": "2026-11-16",

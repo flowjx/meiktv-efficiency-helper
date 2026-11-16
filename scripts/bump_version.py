@@ -3,7 +3,7 @@
 用法（在插件目录执行）：
     python scripts/bump_version.py 2.3.1 "修复xxx" "新增yyy"
 然后 git add -A && git commit -m "release 2.3.1" && git push
-已安装的插件最多 6 小时内（或在弹窗点“立即检查”）就会提示更新。
+已安装的插件最多 1 小时内（或在弹窗点“立即检查”）就会提示更新。
 """
 import datetime
 import json
