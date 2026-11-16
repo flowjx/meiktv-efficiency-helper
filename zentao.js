@@ -182,30 +182,34 @@
     const td = row.progressTd;
     if (!td) return;
     td.innerHTML = '';
+    // 左边是备注内容，右边是“跟进”按钮；用 flex 让按钮在格子里竖直居中
+    const body = el('div', { class: 'mkz-progress-body' });
+    const wrap = el('div', { class: 'mkz-progress-wrap' }, [body]);
+    td.appendChild(wrap);
+    if (row.editUrl) {
+      wrap.appendChild(el('button', {
+        type: 'button', class: 'mkz-follow-btn', title: '提交一条跟进备注（走禅道“编辑测试单”的备注）',
+        text: '跟进', onclick: () => openFollowDialog(row)
+      }));
+    }
     const p = row.progress;
-    if (!p) { td.appendChild(el('span', { class: 'mkz-muted', text: '加载中…' })); return; }
-    if (p.error) { td.appendChild(el('span', { class: 'mkz-muted', text: `加载失败：${p.error}` })); return; }
+    if (!p) { body.appendChild(el('span', { class: 'mkz-muted', text: '加载中…' })); return; }
+    if (p.error) { body.appendChild(el('span', { class: 'mkz-muted', text: `加载失败：${p.error}` })); return; }
     if (p.comments.length) {
       p.comments.forEach((c, i) => {
-        td.appendChild(el('div', { class: `mkz-note${i ? ' mkz-note--old' : ''}`, title: `${c.date} ${c.time} ${c.who}\n${c.comment}` }, [
+        body.appendChild(el('div', { class: `mkz-note${i ? ' mkz-note--old' : ''}`, title: `${c.date} ${c.time} ${c.who}\n${c.comment}` }, [
           el('span', { class: 'mkz-note__meta', text: `${shortDate(c.date)} ${c.time} ${c.who}` }),
           el('span', { class: 'mkz-note__text', text: c.comment })
         ]));
       });
     } else {
-      td.appendChild(el('span', { class: 'mkz-muted', text: '暂无备注' }));
+      body.appendChild(el('span', { class: 'mkz-muted', text: '暂无备注' }));
     }
     if (p.last && (!p.comments.length || p.last.date !== p.comments[0].date || p.last.time !== p.comments[0].time)) {
-      td.appendChild(el('div', { class: 'mkz-last', text: `最近：${shortDate(p.last.date)} ${p.last.time} ${p.last.who} ${p.last.action}` }));
+      body.appendChild(el('div', { class: 'mkz-last', text: `最近：${shortDate(p.last.date)} ${p.last.time} ${p.last.who} ${p.last.action}` }));
     }
     const d = staleDays(row);
-    if (isStale(row)) td.appendChild(el('span', { class: 'mkz-badge mkz-badge--stale', text: `${d} 天无更新` }));
-    if (row.editUrl) {
-      td.appendChild(el('button', {
-        type: 'button', class: 'mkz-follow-btn', title: '提交一条跟进备注（走禅道“编辑测试单”的备注）',
-        text: '跟进', onclick: () => openFollowDialog(row)
-      }));
-    }
+    if (isStale(row)) body.appendChild(el('span', { class: 'mkz-badge mkz-badge--stale', text: `${d} 天无更新` }));
   }
 
   // ---------- 跟进：通过禅道自带的“编辑测试单”表单提交备注 ----------

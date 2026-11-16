@@ -112,6 +112,10 @@
 #taskList th.mkz-col-product { width: 120px; }
 #taskList th.mkz-col-build { width: 90px; }
 
+/* 操作列：隐藏“用例 / 关联用例 / 报告列表”三个按钮（禅道包在 #action-divider 里），列宽随之收窄 */
+#taskList td.c-actions #action-divider { display: none; }
+#taskList th.c-actions-6 { width: 110px; }
+
 #taskList td.mkz-col-product,
 #taskList td.mkz-col-build {
   overflow: hidden;
@@ -181,9 +185,19 @@
 }
 
 /* 跟进按钮与弹窗 */
+.mkz-progress-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mkz-progress-body {
+  flex: 1;
+  min-width: 0;
+}
+
 .mkz-follow-btn {
-  float: right;
-  margin: 2px 0 0 6px;
+  flex: none;
   padding: 0 8px;
   border: 1px solid #e8336d;
   border-radius: 10px;
