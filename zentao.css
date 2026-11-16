@@ -179,3 +179,68 @@
   position: fixed;
   left: -9999px;
 }
+
+/* 跟进按钮与弹窗 */
+.mkz-follow-btn {
+  float: right;
+  margin: 2px 0 0 6px;
+  padding: 0 8px;
+  border: 1px solid #e8336d;
+  border-radius: 10px;
+  background: #fff;
+  color: #e8336d;
+  font-size: 12px;
+  line-height: 18px;
+  cursor: pointer;
+}
+
+.mkz-follow-btn:hover { background: #e8336d; color: #fff; }
+
+.mkz-follow {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, .35);
+}
+
+.mkz-follow__card {
+  width: 520px;
+  max-width: calc(100vw - 32px);
+  padding: 16px 18px;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, .2);
+}
+
+.mkz-follow__title { margin-bottom: 8px; font-size: 14px; font-weight: bold; }
+
+.mkz-follow__history {
+  max-height: 120px;
+  overflow: auto;
+  margin-bottom: 8px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  background: #f7f9fc;
+  font-size: 12px;
+}
+
+.mkz-follow__recent + .mkz-follow__recent { margin-top: 4px; }
+
+.mkz-follow__input {
+  width: 100%;
+  min-height: 110px;
+  padding: 8px;
+  border: 1px solid #d6dbe6;
+  border-radius: 4px;
+  resize: vertical;
+  font: inherit;
+}
+
+.mkz-follow__input:focus { border-color: #2e7fff; outline: none; }
+.mkz-follow__hint { margin-top: 6px; color: #8c95a6; font-size: 12px; }
+.mkz-follow__status { min-height: 18px; margin-top: 6px; font-size: 12px; color: #646a73; }
+.mkz-follow__status.is-error { color: #e5484d; }
+.mkz-follow__actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }

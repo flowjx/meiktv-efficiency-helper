@@ -70,8 +70,10 @@
     const statusKey = (statusSpan?.className.match(/status-(wait|doing|blocked|done)/) || [])[1]
       || Object.keys(STATUS_TEXT).find(k => STATUS_TEXT[k] === text(C.status)) || 'wait';
     const viewLink = tr.querySelector('a[href*="f=view"][href*="taskID="]');
+    const editLink = tr.querySelector('a[href*="f=edit"][href*="taskID="]');
     const id = text(C.id);
     return {
+      editUrl: editLink ? editLink.getAttribute('href') : '',
       tr, id: String(Number(id) || id), rawId: id,
       name: text(C.name), product: text(C.product), project: text(C.project), build: text(C.build),
       owner: text(C.owner), begin: text(C.begin), end: text(C.end), status: statusKey,
@@ -198,6 +200,115 @@
     }
     const d = staleDays(row);
     if (isStale(row)) td.appendChild(el('span', { class: 'mkz-badge mkz-badge--stale', text: `${d} 天无更新` }));
+    if (row.editUrl) {
+      td.appendChild(el('button', {
+        type: 'button', class: 'mkz-follow-btn', title: '提交一条跟进备注（走禅道“编辑测试单”的备注）',
+        text: '跟进', onclick: () => openFollowDialog(row)
+      }));
+    }
+  }
+
+  // ---------- 跟进：通过禅道自带的“编辑测试单”表单提交备注 ----------
+  // 本站禅道的 action-comment 接口对普通账号无权限，所以用编辑页：原样带回全部字段，只填 comment。
+  function editFormUrl(row) {
+    const url = new URL(row.editUrl, location.origin);
+    url.searchParams.set('onlybody', 'yes');
+    return url.pathname + url.search;
+  }
+
+  function textToHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML.replace(/\r?\n/g, '<br />');
+  }
+
+  async function submitFollowUp(row, text) {
+    const url = editFormUrl(row);
+    const html = await (await fetch(url, { credentials: 'include' })).text();
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    if (/m=user&f=deny/.test(html)) throw new Error('没有编辑这张测试单的权限');
+    if (/m=user&f=login/.test(html)) throw new Error('禅道登录已过期，请刷新页面重新登录');
+    const form = Array.from(doc.querySelectorAll('form')).find(f => f.querySelector('[name="comment"]'));
+    if (!form) throw new Error('没找到编辑表单里的备注框，禅道页面可能改版了');
+
+    // 用表单当前值（即测试单原值）组装提交数据，只替换备注
+    const data = new FormData();
+    Array.from(form.elements).forEach(field => {
+      if (!field.name || field.disabled) return;
+      const type = (field.type || '').toLowerCase();
+      if (['button', 'submit', 'reset', 'file', 'image'].includes(type)) return;
+      if ((type === 'checkbox' || type === 'radio') && !field.checked) return;
+      if (field.tagName === 'SELECT') {
+        Array.from(field.options).filter(o => o.selected).forEach(o => data.append(field.name, o.value));
+        return;
+      }
+      if (field.name === 'comment') return;
+      data.append(field.name, field.value);
+    });
+    data.set('comment', textToHtml(text));
+
+    const res = await fetch(form.getAttribute('action') || url, { method: 'POST', credentials: 'include', body: data });
+    const reply = await res.text();
+    const alertMsg = (reply.match(/alert\((['"])([\s\S]*?)\1\)/) || [])[2];
+    if (alertMsg) throw new Error(alertMsg.replace(/\\n/g, ' ').slice(0, 200));
+
+    // 以历史记录为准确认是否写入成功
+    const progress = await fetchProgress(row, true);
+    const latest = progress.comments[0];
+    const plain = norm(text);
+    if (!latest || norm(latest.comment) !== plain) throw new Error('提交后没在历史记录里找到这条备注，请到禅道详情页确认');
+    return progress;
+  }
+
+  function openFollowDialog(row) {
+    document.getElementById('mkz-follow')?.remove();
+    const textarea = el('textarea', { class: 'mkz-follow__input', placeholder: '写跟进内容，如：冒烟测试通过，待回归支付流程（Ctrl+Enter 提交）' });
+    const status = el('div', { class: 'mkz-follow__status' });
+    const submit = el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: '提交跟进' });
+    const cancel = el('button', { type: 'button', class: 'btn btn-sm', text: '取消' });
+    const recent = (row.progress?.comments || []).map(c => el('div', { class: 'mkz-follow__recent' }, [
+      el('span', { class: 'mkz-note__meta', text: `${shortDate(c.date)} ${c.time} ${c.who}` }), c.comment
+    ]));
+    const overlay = el('div', { id: 'mkz-follow', class: 'mkz-follow' }, [
+      el('div', { class: 'mkz-follow__card' }, [
+        el('div', { class: 'mkz-follow__title', text: `跟进 #${row.rawId} ${row.name}` }),
+        recent.length ? el('div', { class: 'mkz-follow__history' }, recent) : null,
+        textarea,
+        el('div', { class: 'mkz-follow__hint', text: '提交后会以你的账号在禅道记录一条“编辑”并附上这段备注，测试单其他字段保持不变。' }),
+        status,
+        el('div', { class: 'mkz-follow__actions' }, [cancel, submit])
+      ])
+    ]);
+    const close = () => overlay.remove();
+    cancel.addEventListener('click', close);
+    overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+    const doSubmit = async () => {
+      const text = textarea.value.trim();
+      if (!text) { status.className = 'mkz-follow__status is-error'; status.textContent = '请先填写跟进内容'; return; }
+      submit.disabled = true;
+      textarea.disabled = true;
+      status.className = 'mkz-follow__status';
+      status.textContent = '提交中…';
+      try {
+        row.progress = await submitFollowUp(row, text);
+        renderProgress(row);
+        renderStats();
+        setInfo(`#${row.rawId} 跟进已提交`);
+        close();
+      } catch (e) {
+        status.className = 'mkz-follow__status is-error';
+        status.textContent = `提交失败：${e.message || e}`;
+        submit.disabled = false;
+        textarea.disabled = false;
+      }
+    };
+    submit.addEventListener('click', doSubmit);
+    textarea.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) doSubmit();
+      if (e.key === 'Escape') close();
+    });
+    document.body.appendChild(overlay);
+    textarea.focus();
   }
 
   // ---------- 表格改造 ----------
