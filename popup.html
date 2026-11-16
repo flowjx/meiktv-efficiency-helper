@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>魅KTV效率助手</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <img src="icons/icon32.png" alt="">
+    <strong>魅KTV效率助手</strong>
+  </header>
+
+  <section class="versions">
+    <div>当前版本 <b id="current">-</b></div>
+    <div>最新版本 <b id="latest">-</b></div>
+  </section>
+
+  <div id="state" class="state">检查中…</div>
+
+  <section id="update" class="update" hidden>
+    <div id="notes-title" class="notes-title"></div>
+    <ul id="notes"></ul>
+    <ol class="steps">
+      <li>用 git 安装的：在插件目录执行 <code>git pull</code>；<br>下载安装的：<a id="download" href="#" target="_blank">下载最新压缩包</a>，解压后<b>覆盖</b>原插件目录的文件。</li>
+      <li>点下面的“重新加载插件”，再刷新业务页面。</li>
+    </ol>
+    <button id="reload" type="button" class="primary">我已替换文件，重新加载插件</button>
+  </section>
+
+  <footer>
+    <button id="check" type="button">立即检查</button>
+    <a id="repo" href="#" target="_blank">仓库主页</a>
+    <span id="checked-at"></span>
+  </footer>
+
+  <script src="update-config.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

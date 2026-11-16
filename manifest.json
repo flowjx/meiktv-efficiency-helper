@@ -1,0 +1,67 @@
+{
+  "manifest_version": 3,
+  "name": "魅KTV效率助手",
+  "version": "2.3.0",
+  "description": "在门店管理页面批量选择门店，在音乐页面批量添加播放列表和歌手，增强禅道测试单列表（统计、进度、搜索）。",
+  "action": {
+    "default_title": "魅KTV效率助手",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    },
+    "default_popup": "popup.html"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": [
+    "alarms",
+    "storage"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://op.meiktv.com/*",
+        "http://music.remote.meiktv.com/music/play.html*",
+        "http://music.remote.meiktv.com/singer/index.html*"
+      ],
+      "js": [
+        "update-notice.js",
+        "content.js"
+      ],
+      "css": [
+        "styles.css"
+      ],
+      "all_frames": true,
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://bug.meiktv.com/*"
+      ],
+      "js": [
+        "update-notice.js",
+        "zentao.js"
+      ],
+      "css": [
+        "zentao.css"
+      ],
+      "all_frames": true,
+      "run_at": "document_idle"
+    }
+  ],
+  "host_permissions": [
+    "https://op.meiktv.com/*",
+    "http://music.remote.meiktv.com/*",
+    "https://bug.meiktv.com/*",
+    "https://raw.githubusercontent.com/*"
+  ]
+}

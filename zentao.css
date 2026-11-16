@@ -1,0 +1,170 @@
+/* 禅道测试单列表增强（zentao.js），类名统一 mkz- 前缀 */
+.mkz-toolbar {
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  background: #f7f9fc;
+  border: 1px solid #e5e9f2;
+  border-radius: 4px;
+}
+
+.mkz-toolbar__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.mkz-title {
+  color: #e8336d;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.mkz-search.form-control {
+  width: 340px;
+  max-width: 100%;
+  height: 28px;
+}
+
+.mkz-check {
+  margin: 0;
+  font-weight: normal;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.mkz-count {
+  color: #3c4353;
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+.mkz-info {
+  color: #8c95a6;
+  font-size: 12px;
+}
+
+.mkz-stats {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mkz-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.mkz-group__title {
+  min-width: 52px;
+  color: #8c95a6;
+  font-size: 12px;
+}
+
+.mkz-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 9px;
+  border: 1px solid #d6dbe6;
+  border-radius: 12px;
+  background: #fff;
+  color: #3c4353;
+  font-size: 12px;
+  line-height: 18px;
+  cursor: pointer;
+}
+
+.mkz-chip b {
+  font-weight: bold;
+}
+
+.mkz-chip:hover {
+  border-color: #2e7fff;
+}
+
+.mkz-chip.is-active {
+  border-color: #2e7fff;
+  background: #2e7fff;
+  color: #fff;
+}
+
+.mkz-chip--doing b { color: #2e7fff; }
+.mkz-chip--wait b { color: #8c95a6; }
+.mkz-chip--blocked b,
+.mkz-chip--danger b { color: #e5484d; }
+.mkz-chip--done b { color: #2ba471; }
+.mkz-chip--warn b { color: #e88a00; }
+.mkz-chip--muted b { color: #8c95a6; }
+.mkz-chip.is-active b { color: #fff; }
+
+/* 表格 */
+#taskList .mkz-hide { display: none; }
+#taskList tr.mkz-filtered { display: none; }
+#taskList tr.mkz-row--blocked > td:first-child { box-shadow: inset 3px 0 0 #e5484d; }
+#taskList tr.mkz-row--done { color: #8c95a6; }
+
+.mkz-progress-th { min-width: 260px; }
+
+.mkz-progress-td {
+  max-width: 380px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.mkz-note {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  white-space: normal;
+}
+
+.mkz-note + .mkz-note { margin-top: 3px; }
+.mkz-note--old { color: #8c95a6; }
+
+.mkz-note__meta {
+  margin-right: 4px;
+  color: #2e7fff;
+  white-space: nowrap;
+}
+
+.mkz-note--old .mkz-note__meta { color: #8c95a6; }
+
+.mkz-last,
+.mkz-muted {
+  color: #a3abba;
+}
+
+.mkz-badge {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 0 5px;
+  border-radius: 3px;
+  font-size: 11px;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+.mkz-badge--overdue { background: #fdecec; color: #e5484d; }
+.mkz-badge--soon { background: #fff4e0; color: #e88a00; }
+.mkz-badge--stale { margin: 2px 0 0; background: #fff4e0; color: #e88a00; }
+
+.mkz-project-diff {
+  margin-top: 2px;
+  color: #e88a00;
+  font-size: 12px;
+}
+
+.mkz-mark {
+  padding: 0;
+  background: #ffe58f;
+}
+
+.mkz-copy-fallback {
+  position: fixed;
+  left: -9999px;
+}

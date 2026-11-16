@@ -1,0 +1,11 @@
+{
+  "version": "2.3.0",
+  "date": "2026-11-16",
+  "notes": [
+    "新增在线更新提醒：工具栏图标角标、弹窗查看更新内容、页面提示条",
+    "新增禅道测试单列表增强：统计、进度、搜索、导出、复制摘要",
+    "修复播放列表导出 CSV 换行错误、歌手按钮位置"
+  ],
+  "download": "https://github.com/flowjx/meiktv-efficiency-helper/archive/refs/heads/main.zip",
+  "history": []
+}

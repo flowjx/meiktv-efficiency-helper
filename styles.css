@@ -1,0 +1,383 @@
+.meiktv-batch-store-button {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 2147483647;
+  min-width: 132px;
+  padding: 10px 16px;
+  border: 0;
+  border-radius: 6px;
+  background: #1677ff;
+  box-shadow: 0 4px 14px rgba(22, 119, 255, 0.32);
+  color: #fff;
+  cursor: pointer;
+  font: 14px/20px -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.meiktv-batch-store-button:hover {
+  background: #0958d9;
+  box-shadow: 0 6px 18px rgba(22, 119, 255, 0.4);
+  transform: translateY(-1px);
+}
+
+.meiktv-batch-store-button:focus-visible {
+  outline: 3px solid rgba(22, 119, 255, 0.35);
+  outline-offset: 2px;
+}
+
+.meiktv-music-add-button {
+  margin-left: 10px;
+  vertical-align: middle;
+}
+
+.meiktv-singer-add-button {
+  margin-right: 10px;
+  vertical-align: middle;
+}
+
+.meiktv-batch-store-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 76px;
+  z-index: 2147483647;
+  max-width: calc(100vw - 32px);
+  padding: 8px 14px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
+  font: 13px/20px -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 8px);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.meiktv-batch-store-toast.is-visible {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.meiktv-batch-store-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483646;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.22);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+}
+
+.meiktv-batch-store-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+.meiktv-batch-store-panel > * {
+  position: relative;
+}
+
+.meiktv-batch-store-panel__card {
+  position: relative;
+  z-index: 1;
+  width: 360px;
+  padding: 16px;
+  border-radius: 6px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+}
+
+.meiktv-batch-store-panel__header,
+.meiktv-batch-store-panel__label,
+.meiktv-batch-store-panel__textarea,
+.meiktv-batch-store-panel__hint,
+.meiktv-batch-store-status,
+.meiktv-batch-store-panel__actions {
+  position: relative;
+  z-index: 1;
+}
+
+.meiktv-batch-store-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: -8px -8px 14px;
+  padding: 8px;
+  color: #1f1f1f;
+  font-size: 16px;
+}
+
+.meiktv-batch-store-panel__header,
+.meiktv-batch-store-panel__label,
+.meiktv-batch-store-panel__textarea,
+.meiktv-batch-store-panel__hint,
+.meiktv-batch-store-status,
+.meiktv-batch-store-panel__actions {
+  width: 100%;
+}
+
+.meiktv-batch-store-panel__header,
+.meiktv-batch-store-panel__label,
+.meiktv-batch-store-panel__textarea,
+.meiktv-batch-store-panel__hint,
+.meiktv-batch-store-status,
+.meiktv-batch-store-panel__actions {
+  box-sizing: border-box;
+}
+
+.meiktv-batch-store-panel__header {
+  background: #fff;
+}
+
+.meiktv-batch-store-panel__close {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  background: transparent;
+  color: #8c8c8c;
+  cursor: pointer;
+  font-size: 22px;
+  line-height: 28px;
+}
+
+.meiktv-batch-store-panel__close:hover {
+  color: #1f1f1f;
+}
+
+.meiktv-batch-store-panel__label {
+  display: block;
+  margin-bottom: 6px;
+  color: #434343;
+  font-size: 13px;
+}
+
+.meiktv-batch-store-panel__textarea {
+  display: block;
+  min-height: 150px;
+  padding: 10px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  outline: none;
+  resize: vertical;
+  background: #fff;
+  color: #1f1f1f;
+  font: 13px/20px Consolas, Monaco, monospace;
+}
+
+.meiktv-batch-store-panel__textarea:focus {
+  border-color: #1677ff;
+  box-shadow: 0 0 0 2px rgba(22, 119, 255, 0.14);
+}
+
+.meiktv-batch-store-panel__hint {
+  margin-top: 6px;
+  color: #8c8c8c;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.meiktv-batch-store-status {
+  min-height: 22px;
+  margin-top: 8px;
+  color: #595959;
+  font-size: 12px;
+  line-height: 22px;
+}
+
+.meiktv-batch-store-status.is-error {
+  color: #cf1322;
+}
+
+.meiktv-batch-store-status.is-success {
+  color: #389e0d;
+}
+
+.meiktv-batch-store-panel__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.meiktv-batch-store-action {
+  flex: 1;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 4px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.meiktv-batch-store-action--select {
+  background: #1677ff;
+}
+
+.meiktv-batch-store-action--select:hover {
+  background: #0958d9;
+}
+
+.meiktv-batch-store-action--unselect {
+  background: #ff4d4f;
+}
+
+.meiktv-batch-store-action--unselect:hover {
+  background: #cf1322;
+}
+
+.meiktv-music-panel__card {
+  width: 520px;
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+}
+
+.meiktv-music-panel {
+  align-items: center;
+  justify-content: center;
+}
+
+.meiktv-music-material-field small {
+  display: block;
+  margin-top: 4px;
+  color: #cf1322;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.meiktv-music-store-textarea {
+  min-height: 120px;
+}
+
+.meiktv-music-file {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  font-size: 12px;
+}
+
+.meiktv-music-fields {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.meiktv-music-fields label {
+  flex: 1;
+  color: #434343;
+  font-size: 12px;
+}
+
+.meiktv-music-fields input {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 4px;
+  padding: 7px 8px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.meiktv-music-checkbox {
+  display: block;
+  margin-top: 10px;
+  color: #434343;
+  font-size: 13px;
+}
+
+.meiktv-music-checkbox input {
+  margin-right: 6px;
+  vertical-align: -1px;
+}
+
+.meiktv-music-summary {
+  min-height: 22px;
+  margin-top: 10px;
+  padding: 7px 9px;
+  border-radius: 4px;
+  background: #f5f5f5;
+  color: #434343;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.meiktv-music-summary.is-error {
+  background: #fff1f0;
+  color: #cf1322;
+}
+
+.meiktv-music-actions,
+.meiktv-music-export-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.meiktv-music-actions .meiktv-batch-store-action {
+  min-width: 0;
+  padding: 8px 10px;
+}
+
+.meiktv-music-panel progress {
+  display: block;
+  width: 100%;
+  height: 8px;
+  margin-top: 14px;
+}
+
+.meiktv-music-current {
+  margin-top: 6px;
+  color: #595959;
+  font-size: 12px;
+}
+
+.meiktv-music-status {
+  min-height: 24px;
+}
+
+.meiktv-music-small-button {
+  padding: 7px 9px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  background: #fff;
+  color: #434343;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.meiktv-music-small-button:hover:not(:disabled) {
+  border-color: #1677ff;
+  color: #1677ff;
+}
+
+.meiktv-music-small-button:disabled,
+.meiktv-batch-store-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+@media (max-width: 520px) {
+  .meiktv-batch-store-panel {
+    padding: 16px;
+  }
+
+  .meiktv-batch-store-panel__header,
+  .meiktv-batch-store-panel__label,
+  .meiktv-batch-store-panel__textarea,
+  .meiktv-batch-store-panel__hint,
+  .meiktv-batch-store-status,
+  .meiktv-batch-store-panel__actions {
+    width: 100%;
+  }
+
+  .meiktv-batch-store-panel__card {
+    width: min(360px, calc(100vw - 32px));
+  }
+
+  .meiktv-music-panel__card {
+    width: min(520px, calc(100vw - 32px));
+  }
+}

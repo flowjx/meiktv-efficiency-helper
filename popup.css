@@ -1,0 +1,85 @@
+body {
+  width: 320px;
+  margin: 0;
+  padding: 12px 14px;
+  font: 13px/1.6 "Microsoft YaHei", system-ui, sans-serif;
+  color: #1f2329;
+  background: #fff;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: 14px;
+}
+
+header img { width: 22px; height: 22px; }
+
+.versions {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: #f5f7fa;
+}
+
+.state {
+  margin: 10px 0;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: #f5f7fa;
+  color: #646a73;
+}
+
+.state.is-ok { background: #e8f7ef; color: #1f8a55; }
+.state.is-new { background: #fdecec; color: #d1343a; font-weight: bold; }
+.state.is-error { background: #fff4e0; color: #b86e00; }
+
+.notes-title { font-weight: bold; }
+
+#notes, .steps {
+  margin: 4px 0 10px;
+  padding-left: 20px;
+}
+
+.steps li { margin-bottom: 4px; }
+
+code {
+  padding: 0 4px;
+  border-radius: 3px;
+  background: #f0f1f5;
+}
+
+button {
+  padding: 4px 10px;
+  border: 1px solid #d0d3d9;
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+  font: inherit;
+}
+
+button:hover { border-color: #2e7fff; color: #2e7fff; }
+
+button.primary {
+  width: 100%;
+  border-color: #e8336d;
+  background: #e8336d;
+  color: #fff;
+}
+
+button.primary:hover { background: #d42a60; color: #fff; }
+
+footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  font-size: 12px;
+  color: #8f959e;
+}
+
+footer a { color: #2e7fff; }
+#checked-at { margin-left: auto; }
