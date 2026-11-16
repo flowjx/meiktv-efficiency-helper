@@ -26,7 +26,43 @@
     }).catch(() => {
       document.documentElement.dataset.mkzMailto = '[]';
     });
+    blockAdminSubmit();
     return;
+  }
+
+  // admin 账号不能提交测试单：按禅道“个人资料”里的用户名判断（只比较是否为 admin，不保存账号）
+  async function currentAccount() {
+    const html = await (await fetch('/index.php?m=my&f=profile&onlybody=yes', { credentials: 'include' })).text();
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const row = Array.from(doc.querySelectorAll('table tr')).find(tr => tr.querySelector('th')?.textContent.trim() === '用户名');
+    return row?.querySelector('td')?.textContent.trim() || '';
+  }
+
+  async function blockAdminSubmit() {
+    let account = '';
+    try { account = await currentAccount(); } catch (_) { return; }
+    if (account.toLowerCase() !== 'admin') return;
+
+    const MESSAGE = 'admin 账号不能提交测试单，请用自己的账号提交';
+    const form = document.getElementById('dataform');
+    if (!form) return;
+    const banner = document.createElement('div');
+    banner.className = 'mkz-admin-block';
+    banner.textContent = `⚠ ${MESSAGE}`;
+    form.prepend(banner);
+    // 按钮不禁用（禁用后点击没有任何反应），点击时弹出提示
+    const submitBtn = form.querySelector('#submit, button[type="submit"]');
+    if (submitBtn) submitBtn.title = MESSAGE;
+    // 捕获阶段拦截：既阻止原生提交，也不让禅道自己的提交处理执行
+    const stop = e => {
+      if (e.type === 'click' && !e.target.closest('#submit, button[type="submit"], input[type="submit"]')) return;
+      if (e.type === 'submit' && e.target !== form) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      window.alert(MESSAGE);
+    };
+    window.addEventListener('submit', stop, true);
+    window.addEventListener('click', stop, true);
   }
 
   // ---------- 编辑测试单页：锁定已有签名 ----------

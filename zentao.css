@@ -302,3 +302,15 @@
 /* 名称：无链接，单击打开概况弹窗 */
 #taskList a.mkz-name-link { cursor: pointer; }
 #taskList a.mkz-name-link:hover { text-decoration: underline; }
+
+/* 提交测试页：admin 账号禁止提交的提示 */
+.mkz-admin-block {
+  margin: 0 0 12px;
+  padding: 10px 14px;
+  border: 1px solid #f5c2c4;
+  border-radius: 4px;
+  background: #fdecec;
+  color: #d1343a;
+  font-size: 14px;
+  font-weight: bold;
+}
