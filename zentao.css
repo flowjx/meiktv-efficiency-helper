@@ -267,3 +267,10 @@
   cursor: not-allowed;
   user-select: none;
 }
+
+/* 提交测试页：版本旁的“新建版本 / 刷新”（zentao-create-main.js） */
+.mkz-build-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}

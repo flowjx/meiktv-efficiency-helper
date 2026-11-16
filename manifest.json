@@ -58,6 +58,17 @@
       ],
       "all_frames": true,
       "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://bug.meiktv.com/*"
+      ],
+      "js": [
+        "zentao-create-main.js"
+      ],
+      "world": "MAIN",
+      "all_frames": true,
+      "run_at": "document_idle"
     }
   ],
   "host_permissions": [
