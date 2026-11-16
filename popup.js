@@ -6,7 +6,6 @@
   function render(info) {
     const current = chrome.runtime.getManifest().version;
     $('current').textContent = current;
-    $('repo').href = UPDATE_CONFIG.repoUrl;
     if (!info) {
       $('state').textContent = '尚未检查';
       return;
