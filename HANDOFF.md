@@ -53,7 +53,7 @@ Chrome/Edge **Manifest V3 内容脚本插件**，给魅KTV 内部后台加"批�
 
 - 站点是禅道旧版（12.x 风格，GET 参数路由 `index.php?m=&f=`，无 iframe 外壳）。需要用户自己登录，插件复用登录态。
 - 只在 `body.m-testtask-browse` 且存在 `#taskList` 时生效；列按**表头文字**定位（ID/名称/所属产品/所属项目/版本/负责人/开始日期/结束日期/状态），禅道改列名或用户自定义列后要同步改 `C` 映射。
-- 加载全部：读 `.pager[data-link-creator]`，把 `{recPerPage}` 换成总数、`{page}` 换成 1 重新拉列表并替换 tbody（总数 > 1000 不做）。替换后的行没有禅道弹窗脚本，"概况"按钮改为新标签打开。
+- 加载全部：读 `.pager[data-link-creator]`，把 `{recPerPage}` 换成总数、`{page}` 换成 1 重新拉列表并替换 tbody（总数 > 1000 不做）。替换后的行没有禅道弹窗脚本，"概况"按钮（`a.iframe` 改为 `a.mkz-view-link`）和双击行都走插件自己的 `openViewDialog()`：内嵌 `m=testtask&f=view&taskID=N&onlybody=yes` 的 iframe，关闭时强制刷新该行进度。
 - 进度：对每行的"概况"链接（`m=testtask&f=view&taskID=N&onlybody=yes`）并发 4 个请求，解析 `#actionbox .histories-list > li`：头部文字形如 `2026-11-13 17:50:40, 由 <strong>张三</strong> 编辑。`，备注在 `.article-content.comment`。缓存在页面 localStorage `mkz-progress:<id>`，30 分钟过期；筛选偏好存 `mkz-prefs`。
 - **跟进（2026-11-16 新增）**：进度列的“跟进”按钮 → 弹窗写备注 → `submitFollowUp()`：GET 该行“编辑”链接（加 `onlybody=yes`）拿到编辑表单，**原样带回全部字段**（含 desc、mailto 多选），只设置 `comment`（纯文本转义、换行转 `<br />`），POST 回同一地址；成功时禅道返回 `parent.location=...view...` 脚本，失败通常是 `alert(...)`。最后强制刷新该行历史，最新备注等于提交内容才算成功。
   - 为什么不用 `m=action&f=comment`：本站禅道该方法对账号返回 `user-deny`（无权限）。
