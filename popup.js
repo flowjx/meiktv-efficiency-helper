@@ -26,11 +26,16 @@
         li.textContent = n;
         ul.appendChild(li);
       });
-      $('download').href = info.download || UPDATE_CONFIG.zipUrl;
+      const intranet = info.source === 'intranet';
+      $('step-github').hidden = intranet;
+      $('step-intranet').hidden = !intranet;
+      document.querySelectorAll('.download').forEach(a => { a.href = info.download || UPDATE_CONFIG.zipUrl; });
+      $('source').textContent = intranet ? '来源：公司内网（GitHub 不可用时的备用通道）' : '来源：GitHub';
     } else {
       $('update').hidden = true;
       state.className = info.error ? 'state is-error' : 'state is-ok';
-      state.textContent = info.error ? `检查失败：${info.error}` : '已是最新版本';
+      state.textContent = info.error ? `检查失败：${info.error}`
+        : `已是最新版本${info.source === 'intranet' ? '（通过公司内网检查）' : ''}`;
     }
   }
 

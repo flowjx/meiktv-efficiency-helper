@@ -90,6 +90,8 @@ Chrome/Edge **Manifest V3 内容脚本插件**，给魅KTV 内部后台加"批�
 - 想换成公司内网地址：只改 `update-config.js` 的 URL，并把新域名加进 manifest 的 `host_permissions`。
 - 2026-11-16 用 node 模拟 chrome API 测过版本比较和检查逻辑（有新版、同版、断网三种情况）；弹窗和提示条还没在真实浏览器里装插件看过。
 
+- **内网备用更新源（2026-11-16）**：`background.js` 的 `fetchLatest()` 先取 GitHub raw（8 秒超时），失败再取 `UPDATE_CONFIG.intranetVersionUrl`；`update.source` 记 `github`/`intranet`，intranet 时下载地址换成 `intranetZipUrl`，弹窗显示内网步骤。服务端 `/update/version.json` = `git show origin/main:version.json`，`/update/plugin.zip` = `git archive origin/main`（按提交 sha 缓存）。所以**发版必须成功 push**，内网才会跟着更新；push 失败时 origin/main 不动，内网仍给旧版。已用模拟测试 GitHub 正常/不通/超时/全不通四种情况。
+
 ## 5.1 安装明细上报（2026-11-16 新增）
 
 - 链路：插件 background.js → `UPDATE_CONFIG.reportUrl`（当前 `http://172.16.5.36:8790/api/ping`，是维护者本机局域网 IP）→ `server/install_server.py` → 本机 MySQL `meiktv_business.helper_install`。

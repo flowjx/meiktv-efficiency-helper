@@ -165,6 +165,23 @@ class Handler(BaseHTTPRequestHandler):
         url = urlparse(self.path)
         if url.path == "/health":
             return self._send(200, '{"ok":true}')
+        if url.path == "/update/version.json":
+            data = released_file("version.json")
+            if data is None:
+                return self._send(503, '{"ok":false,"error":"no release"}')
+            return self._send(200, data, "application/json; charset=utf-8")
+        if url.path == "/update/plugin.zip":
+            data = released_zip()
+            if data is None:
+                return self._send(503, "打包失败", "text/plain; charset=utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "application/zip")
+            self.send_header("Content-Disposition", 'attachment; filename="meiktv-efficiency-helper.zip"')
+            self.send_header("Content-Length", str(len(data)))
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(data)
+            return None
         if url.path == "/api/team-config":
             # 分组与默认抄送名单只放在本地配置（config.local.json 的 team），不进公开仓库；插件后台定时拉取
             team = CFG.get("team") or {}
@@ -176,6 +193,44 @@ class Handler(BaseHTTPRequestHandler):
         if not secrets.compare_digest(key, CFG["admin_key"]):
             return self._send(403, "需要查看口令：/installs?key=...", "text/plain; charset=utf-8")
         return self._send(200, render_page(), "text/html; charset=utf-8")
+
+
+# ---------- 内网更新：GitHub 不通时插件改从这里取 ----------
+# 只提供“已发布”的内容：取本地仓库的 origin/main（最后一次成功推到 GitHub 的提交），本地未推送的改动不会被下载到。
+REPO_DIR = HERE.parent
+RELEASE_REF = "origin/main"
+_zip_cache = {"sha": "", "data": b""}
+_zip_lock = threading.Lock()
+
+
+def _git(*args):
+    import subprocess  # noqa: PLC0415
+    flags = 0x08000000 if sys.platform == "win32" else 0  # CREATE_NO_WINDOW，pythonw 下不弹黑框
+    return subprocess.run(["git", "-C", str(REPO_DIR), *args], capture_output=True, timeout=60,
+                          creationflags=flags, check=True).stdout
+
+
+def released_file(path):
+    try:
+        return _git("show", f"{RELEASE_REF}:{path}")
+    except Exception as e:  # noqa: BLE001
+        log(f"读取已发布文件 {path} 失败：{e}")
+        return None
+
+
+def released_zip():
+    try:
+        sha = _git("rev-parse", RELEASE_REF).decode().strip()
+        with _zip_lock:
+            if _zip_cache["sha"] != sha:
+                # 目录结构与 GitHub 下载的 zip 一致：meiktv-efficiency-helper-main/...
+                _zip_cache["data"] = _git("archive", "--format=zip", "--prefix=meiktv-efficiency-helper-main/", RELEASE_REF)
+                _zip_cache["sha"] = sha
+                log(f"已打包内网更新 zip：{sha[:7]}，{len(_zip_cache['data']) // 1024} KB")
+            return _zip_cache["data"]
+    except Exception as e:  # noqa: BLE001
+        log(f"打包内网更新 zip 失败：{e}")
+        return None
 
 
 def render_page():

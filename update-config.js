@@ -7,6 +7,10 @@ const UPDATE_CONFIG = {
   get repoUrl() { return `https://github.com/${this.repo}`; },
   get zipUrl() { return `https://github.com/${this.repo}/archive/refs/heads/${this.branch}.zip`; },
   checkIntervalMinutes: 60,
+  // GitHub 连不上时的内网更新源（server/install_server.py 提供，内容是已推送到 GitHub 的 origin/main）
+  intranetVersionUrl: 'http://172.16.5.36:8790/update/version.json',
+  intranetZipUrl: 'http://172.16.5.36:8790/update/plugin.zip',
+  fetchTimeoutMs: 8000,
   // 安装明细上报（server/install_server.py）。改地址时同步改 manifest.json 的 host_permissions。
   reportUrl: 'http://172.16.5.36:8790/api/ping',
   // 分组和默认抄送名单（只存在上报服务的本地配置里，不进公开仓库）

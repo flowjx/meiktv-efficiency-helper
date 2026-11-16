@@ -83,3 +83,9 @@ footer {
 
 footer a { color: #2e7fff; }
 #checked-at { margin-left: auto; }
+
+.source {
+  margin: -4px 0 8px;
+  color: #8f959e;
+  font-size: 12px;
+}

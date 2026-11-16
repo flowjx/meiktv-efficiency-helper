@@ -135,11 +135,12 @@ Chrome / Edge 浏览器插件：给魅KTV 内部后台加上批量操作和统�
 点浏览器工具栏上的插件图标（建议先把它**固定到工具栏**）：
 
 - 显示当前版本和最新版本；点 **“立即检查”** 马上检查更新。
+- 检查更新先连 GitHub；GitHub 连不上（超时或被墙）时，自动改从公司内网获取，弹窗会注明“来源：公司内网”，下载链接也换成内网的压缩包。
 - 有新版本时，图标上会出现红色 **“新”** 字，业务页面左下角也会弹一次提示（点“知道了”后，这个版本不再弹）。
 
 **怎么更新**：
 
-1. 用 git 安装的：在插件目录执行 `git pull`；下载安装的：重新下载压缩包，解压后**覆盖**原来的文件夹（位置不要变）。
+1. 用 git 安装的：在插件目录执行 `git pull`；下载安装的：重新下载压缩包，解压后**覆盖**原来的文件夹（位置不要变）。GitHub 打不开时，用弹窗里的“下载最新压缩包（内网）”。
 2. 点插件图标，在弹窗里点 **“我已替换文件，重新加载插件”**，再刷新业务页面。
 
 ---
@@ -194,6 +195,7 @@ git push
 1. 复制 `server/config.example.json` 为 `server/config.local.json`，填写 MySQL 连接（该文件已在 .gitignore 中，**不要提交**）。
 2. 双击 `server/启动上报服务.bat` 或执行 `python server/install_server.py`，默认监听 `0.0.0.0:8790`；首次启动会生成查看口令 `admin_key` 写回配置文件。
 3. 浏览器打开 `http://<服务器IP>:8790/installs?key=<admin_key>` 查看安装明细。
+   - 内网更新源：`/update/version.json`、`/update/plugin.zip`，内容取本机仓库的 `origin/main`（即最后一次成功推到 GitHub 的版本，本地未推送的改动不会被下载），zip 目录结构与 GitHub 下载的一致。发版推送成功后无需额外操作。
    - 提测分组名单、提交测试默认抄送名单写在 `config.local.json` 的 `team.groups` / `team.mailto`（格式见 `config.example.json`），插件通过 `/api/team-config` 每小时拉取。**同事姓名只放这里，不要写进代码或文档**（仓库是公开的）。改完名单需重启服务。
 4. 同事电脑要能访问这台机器的 8790 端口（Windows 防火墙需放行入站）。
 5. 开机自启：在“启动”文件夹（`shell:startup`）放一个 vbs，用 `pythonw.exe install_server.py` 无窗口启动（vbs 含中文路径时要存成 UTF-16 编码）。
