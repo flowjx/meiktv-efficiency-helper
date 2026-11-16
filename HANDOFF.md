@@ -33,7 +33,7 @@ Chrome/Edge **Manifest V3 内容脚本插件**，给魅KTV 内部后台加"批�
 | `zentao.js` / `zentao.css` | 禅道测试单列表增强，独立的 content script，和 `content.js` 互不依赖。类名前缀 `mkz-` |
 | `content.js` | op 后台和音乐后台的逻辑（约 930 行，一个 IIFE）。见下方函数索引 |
 | `styles.css` | 按钮、面板、toast 样式。类名统一前缀 `meiktv-batch-store-*` / `meiktv-music-*` |
-| `icons/` | 16/32/48/128 PNG，由 `meiktv-logo-transparent.png` 生成 |
+| `icons/` | 16/32/48/128 PNG，2026-11-16 重新设计（玫红→紫渐变圆角方 + 白闪电 + 小黄星，16px 无星），由 `scripts/make_icon.py` 生成，改图标改这个脚本再运行 |
 | `README.md` | 功能说明 + 安装步骤 |
 
 `content.js` 函数索引：

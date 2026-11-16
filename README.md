@@ -2,7 +2,7 @@
 
 这是一个 Chrome/Edge Manifest V3 浏览器插件。
 
-插件名称：**魅KTV效率助手**。工具栏和扩展管理页面使用 `meiktv-logo-transparent.png` 生成的透明 Logo 图标。
+插件名称：**魅KTV效率助手**。图标是玫红渐变底的白色闪电（寓意提效），由 `scripts/make_icon.py` 生成；`meiktv-logo-transparent.png` 是品牌原 logo，仅作素材保留。
 
 ## 功能
 
