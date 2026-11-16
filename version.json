@@ -1,11 +1,18 @@
 {
-  "version": "2.3.1",
+  "version": "2.3.2",
   "date": "2026-11-16",
   "notes": [
-    "更换新图标：玫红渐变闪电，工具栏上小尺寸也清晰"
+    "插件弹窗去掉仓库主页链接"
   ],
   "download": "https://github.com/flowjx/meiktv-efficiency-helper/archive/refs/heads/main.zip",
   "history": [
+    {
+      "version": "2.3.1",
+      "date": "2026-11-16",
+      "notes": [
+        "更换新图标：玫红渐变闪电，工具栏上小尺寸也清晰"
+      ]
+    },
     {
       "version": "2.3.0",
       "date": "2026-11-16",
