@@ -97,13 +97,8 @@
     const body = table.tBodies[0];
     body.innerHTML = '';
     Array.from(newBody.rows).forEach(tr => {
-      const imported = document.importNode(tr, true);
-      // 动态插入的行没有绑定禅道的弹窗脚本，"概况"改由插件自己的弹窗打开（见 openViewDialog）
-      imported.querySelectorAll('a.iframe').forEach(a => {
-        a.classList.remove('iframe');
-        a.classList.add('mkz-view-link');
-      });
-      body.appendChild(imported);
+      // 新插入的行没有禅道的弹窗绑定，“概况”等 a.iframe 由 zentao-list-main.js 在页面环境里重新绑定禅道原生弹窗
+      body.appendChild(document.importNode(tr, true));
     });
     const label = pager.querySelector('.pager-label');
     if (label) label.innerHTML = `共 <strong>${total}</strong> 项（效率助手已在本页加载全部）`;
@@ -211,38 +206,25 @@
     if (isStale(row)) body.appendChild(el('span', { class: 'mkz-badge mkz-badge--stale', text: `${d} 天无更新` }));
   }
 
-  // ---------- 概况弹窗：内嵌禅道自己的概况页（onlybody），关闭后刷新这一行的进度 ----------
-  function openViewDialog(row) {
-    document.getElementById('mkz-view')?.remove();
-    const url = `/index.php?m=testtask&f=view&taskID=${Number(row.id)}&onlybody=yes`;
-    const frame = el('iframe', { class: 'mkz-view__frame', src: url, title: `概况 #${row.rawId}` });
-    const closeBtn = el('button', { type: 'button', class: 'mkz-view__close', title: '关闭（Esc）', text: '×' });
-    const openFull = el('a', { class: 'mkz-view__full', href: url.replace('&onlybody=yes', ''), target: '_blank', text: '新标签打开' });
-    const overlay = el('div', { id: 'mkz-view', class: 'mkz-follow' }, [
-      el('div', { class: 'mkz-view__card' }, [
-        el('div', { class: 'mkz-view__head' }, [
-          el('strong', { class: 'mkz-view__title', text: `概况 #${row.rawId} ${row.name}` }), openFull, closeBtn
-        ]),
-        frame
-      ])
-    ]);
-    const onKey = e => { if (e.key === 'Escape') close(); };
-    const close = async () => {
-      overlay.remove();
-      document.removeEventListener('keydown', onKey);
+  // ---------- 概况：禅道原生弹窗关闭后，刷新这一行的进度（在概况里可能改了状态或写了备注） ----------
+  // 禅道弹窗是 zui modal（#triggerModal），它的事件在页面环境里，这里用轮询 DOM 判断打开→关闭
+  let modalWatchTimer = 0;
+  function refreshAfterModalClose(row) {
+    clearInterval(modalWatchTimer);
+    let seenOpen = false;
+    const started = Date.now();
+    modalWatchTimer = setInterval(async () => {
+      const open = !!document.querySelector('#triggerModal.in, .modal.in');
+      if (open) { seenOpen = true; return; }
+      if (!seenOpen && Date.now() - started < 5000) return; // 还没弹出来
+      clearInterval(modalWatchTimer);
+      if (!seenOpen) return;
       try {
-        row.progress = await fetchProgress(row, true); // 在概况里可能改了状态或写了备注
+        row.progress = await fetchProgress(row, true);
         renderProgress(row);
         renderStats();
       } catch (_) { /* 刷新失败不影响 */ }
-    };
-    closeBtn.addEventListener('click', close);
-    overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
-    document.addEventListener('keydown', onKey);
-    frame.addEventListener('load', () => {
-      try { frame.contentDocument.addEventListener('keydown', onKey); } catch (_) { /* 跨域时忽略 */ }
-    });
-    document.body.appendChild(overlay);
+    }, 400);
   }
 
   // ---------- 跟进：通过禅道自带的“编辑测试单”表单提交备注 ----------
@@ -374,17 +356,17 @@
     rows.forEach(row => {
       const tr = row.tr;
       tr.classList.add(`mkz-row--${row.status}`);
-      // 双击行打开概况弹窗（点在链接/按钮/输入框上的双击不处理）
+      // 双击行 = 点这一行操作区的“概况”，弹出禅道原生概况弹窗（点在链接/按钮/输入框上的双击不处理）
       tr.title = tr.title || '双击查看概况';
       tr.addEventListener('dblclick', e => {
         if (e.target.closest('a, button, input, textarea, select, label')) return;
+        const viewBtn = tr.querySelector('a.iframe[href*="f=view"]');
+        if (!viewBtn) return;
         window.getSelection()?.removeAllRanges();
-        openViewDialog(row);
+        viewBtn.click();
+        refreshAfterModalClose(row);
       });
-      tr.querySelectorAll('a.mkz-view-link').forEach(a => a.addEventListener('click', e => {
-        e.preventDefault();
-        openViewDialog(row);
-      }));
+      tr.querySelector('a.iframe[href*="f=view"]')?.addEventListener('click', () => refreshAfterModalClose(row));
       if (C.project >= 0) {
         tr.cells[C.project].classList.add('mkz-hide');
         if (row.project && row.project !== row.product) {

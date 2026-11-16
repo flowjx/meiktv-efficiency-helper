@@ -292,52 +292,5 @@
   text-align: right;
 }
 
-/* 概况弹窗（双击行 / 概况按钮） */
-.mkz-view__card {
-  display: flex;
-  flex-direction: column;
-  width: min(1100px, calc(100vw - 48px));
-  height: calc(100vh - 80px);
-  border-radius: 8px;
-  background: #fff;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, .25);
-  overflow: hidden;
-}
-
-.mkz-view__head {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
-  border-bottom: 1px solid #eef0f4;
-}
-
-.mkz-view__title {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 14px;
-}
-
-.mkz-view__full { font-size: 12px; white-space: nowrap; }
-
-.mkz-view__close {
-  border: 0;
-  background: none;
-  color: #8c95a6;
-  font-size: 22px;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.mkz-view__close:hover { color: #e5484d; }
-
-.mkz-view__frame {
-  flex: 1;
-  width: 100%;
-  border: 0;
-}
-
+/* 双击行打开禅道原生概况弹窗 */
 #taskList tbody tr { cursor: default; }

@@ -64,7 +64,8 @@
         "https://bug.meiktv.com/*"
       ],
       "js": [
-        "zentao-create-main.js"
+        "zentao-create-main.js",
+        "zentao-list-main.js"
       ],
       "world": "MAIN",
       "all_frames": true,
