@@ -274,3 +274,20 @@
   gap: 6px;
   margin-top: 6px;
 }
+
+/* 弹窗里的表单行（新建版本） */
+.mkz-dialog__field {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0 0 8px;
+  font-weight: normal;
+}
+
+.mkz-dialog__field > span {
+  flex: none;
+  width: 64px;
+  padding-top: 6px;
+  color: #646a73;
+  text-align: right;
+}
