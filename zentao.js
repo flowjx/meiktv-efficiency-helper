@@ -253,15 +253,12 @@
 
     const res = await fetch(form.getAttribute('action') || url, { method: 'POST', credentials: 'include', body: data });
     const reply = await res.text();
-    const alertMsg = (reply.match(/alert\((['"])([\s\S]*?)\1\)/) || [])[2];
-    if (alertMsg) throw new Error(alertMsg.replace(/\\n/g, ' ').slice(0, 200));
-
-    // 以历史记录为准确认是否写入成功
+    // 禅道成功时也可能 alert('保存成功')，所以不凭 alert 判断；以历史记录里是否出现这条备注为准
     const progress = await fetchProgress(row, true);
     const latest = progress.comments[0];
-    const plain = norm(text);
-    if (!latest || norm(latest.comment) !== plain) throw new Error('提交后没在历史记录里找到这条备注，请到禅道详情页确认');
-    return progress;
+    if (latest && norm(latest.comment) === norm(text)) return progress;
+    const alertMsg = (reply.match(/alert\((['"])([\s\S]*?)\1\)/) || [])[2];
+    throw new Error(alertMsg ? alertMsg.replace(/\\n/g, ' ').slice(0, 200) : '提交后没在历史记录里找到这条备注，请到禅道详情页确认');
   }
 
   function openFollowDialog(row) {

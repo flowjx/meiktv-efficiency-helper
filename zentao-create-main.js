@@ -117,10 +117,10 @@
     data.set('desc', desc ? textToHtml(desc) : '');
     const res = await fetch(BUILD_CREATE_URL, { method: 'POST', credentials: 'include', body: data });
     const reply = await res.text();
+    // 禅道成功时也会 alert('保存成功')，所以不能凭 alert 判断；以版本列表里是否出现该版本为准
+    if (await refreshBuilds(name)) return;
     const alertMsg = (reply.match(/alert\((['"])([\s\S]*?)\1\)/) || [])[2];
-    if (alertMsg) throw new Error(alertMsg.replace(/\\n/g, ' ').slice(0, 200));
-    // 以版本列表为准确认是否创建成功，并选中它
-    if (!(await refreshBuilds(name))) throw new Error('提交后版本列表里没找到这个版本，请到版本页确认是否创建成功');
+    throw new Error(alertMsg ? alertMsg.replace(/\\n/g, ' ').slice(0, 200) : '提交后版本列表里没找到这个版本，请到版本页确认是否创建成功');
   }
 
   function openBuildDialog() {
