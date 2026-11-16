@@ -298,3 +298,7 @@
 /* 提测人员列（原“所属产品”列） */
 .mkz-creator { font-weight: bold; color: #3c4353; }
 .mkz-creator__meta { color: #a3abba; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* 名称：无链接，单击打开概况弹窗 */
+#taskList a.mkz-name-link { cursor: pointer; }
+#taskList a.mkz-name-link:hover { text-decoration: underline; }

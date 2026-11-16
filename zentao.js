@@ -386,6 +386,20 @@
         refreshAfterModalClose(row);
       });
       tr.querySelector('a.iframe[href*="f=view"]')?.addEventListener('click', () => refreshAfterModalClose(row));
+      // 名称：去掉原来跳转“用例”页的链接，单击效果与双击整行一致（打开禅道原生概况弹窗）
+      const nameLink = C.name >= 0 ? tr.cells[C.name]?.querySelector('a') : null;
+      if (nameLink) {
+        nameLink.removeAttribute('href');
+        nameLink.classList.add('mkz-name-link');
+        nameLink.title = '点击查看概况';
+        nameLink.addEventListener('click', e => {
+          e.preventDefault();
+          const viewBtn = tr.querySelector('a.iframe[href*="f=view"]');
+          if (!viewBtn) return;
+          viewBtn.click();
+          refreshAfterModalClose(row);
+        });
+      }
       if (C.project >= 0) tr.cells[C.project].classList.add('mkz-hide');
       renderCreator(row);
       // 结束日期提示
