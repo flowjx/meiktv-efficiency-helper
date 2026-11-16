@@ -6,6 +6,7 @@
 
 配置：server/config.local.json（已 .gitignore，绝不要提交），格式见 config.example.json。
 启动：python server/install_server.py    （或双击 server/启动上报服务.bat）
+日志：server/server.log，每行写完立即关闭文件，运行中也能用记事本打开；超过 5MB 启动时自动轮转为 server.log.1。
 """
 import datetime
 import html
@@ -22,7 +23,32 @@ import pymysql
 
 HERE = pathlib.Path(__file__).resolve().parent
 CONFIG_PATH = HERE / "config.local.json"
+LOG_PATH = HERE / "server.log"
+LOG_MAX_BYTES = 5 * 1024 * 1024
 TABLE = "helper_install"
+
+
+def log(msg):
+    """追加一行日志后立即关闭文件（不长期占用，记事本可随时打开）；有控制台时同时打印。"""
+    line = f"[{datetime.datetime.now():%Y-%m-%d %H:%M:%S}] {msg}\n"
+    try:
+        with open(LOG_PATH, "a", encoding="utf-8") as f:
+            f.write(line)
+    except OSError:
+        pass
+    if sys.stderr:  # pythonw 启动时没有控制台，sys.stderr 为 None
+        try:
+            sys.stderr.write(line)
+        except Exception:  # noqa: BLE001
+            pass
+
+
+def rotate_log():
+    try:
+        if LOG_PATH.exists() and LOG_PATH.stat().st_size > LOG_MAX_BYTES:
+            LOG_PATH.replace(LOG_PATH.with_suffix(".log.1"))
+    except OSError:
+        pass
 
 DDL = f"""
 CREATE TABLE IF NOT EXISTS `{TABLE}` (
@@ -58,12 +84,13 @@ FIELDS = {"client_id": 64, "name": 64, "dept": 64, "role": 64, "version": 32, "b
 
 def load_config():
     if not CONFIG_PATH.exists():
-        sys.exit(f"缺少配置文件 {CONFIG_PATH}，请复制 config.example.json 改名后填写。")
+        log(f"缺少配置文件 {CONFIG_PATH}，请复制 config.example.json 改名后填写。")
+        sys.exit(1)
     cfg = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
     if not cfg.get("admin_key"):
         cfg["admin_key"] = secrets.token_urlsafe(12)
         CONFIG_PATH.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8")
-        print(f"已生成查看口令 admin_key 并写回 {CONFIG_PATH.name}")
+        log(f"已生成查看口令 admin_key 并写回 {CONFIG_PATH.name}")
     return cfg
 
 
@@ -97,8 +124,8 @@ def vtuple(v):
 class Handler(BaseHTTPRequestHandler):
     server_version = "MeiktvHelperInstall/1.0"
 
-    def log_message(self, fmt, *args):  # 简化日志
-        sys.stderr.write(f"[{datetime.datetime.now():%m-%d %H:%M:%S}] {self.client_address[0]} {fmt % args}\n")
+    def log_message(self, fmt, *args):
+        log(f"{self.client_address[0]} {fmt % args}")
 
     def _send(self, code, body, ctype="application/json; charset=utf-8"):
         data = body.encode("utf-8") if isinstance(body, str) else body
@@ -191,10 +218,22 @@ th{{background:#fafbfc;color:#646a73;font-weight:normal}} .muted{{color:#a3abba}
 
 
 def main():
-    init_db()
-    host, port = CFG.get("listen_host", "0.0.0.0"), int(CFG.get("listen_port", 8790))
-    print(f"上报服务已启动：http://{host}:{port}  明细页：/installs?key={CFG['admin_key']}")
-    ThreadingHTTPServer((host, port), Handler).serve_forever()
+    rotate_log()
+    try:
+        init_db()
+        host, port = CFG.get("listen_host", "0.0.0.0"), int(CFG.get("listen_port", 8790))
+        server = ThreadingHTTPServer((host, port), Handler)
+    except OSError as e:
+        log(f"启动失败（端口被占用或数据库连不上？）：{e}")
+        sys.exit(1)
+    except pymysql.MySQLError as e:
+        log(f"启动失败，数据库错误：{e}")
+        sys.exit(1)
+    # 口令不写进日志，只在有控制台时显示
+    log(f"上报服务已启动：http://{host}:{port}  明细页：/installs?key=<见 config.local.json 的 admin_key>")
+    if sys.stdout:
+        print(f"明细页：http://<本机IP>:{port}/installs?key={CFG['admin_key']}")
+    server.serve_forever()
 
 
 if __name__ == "__main__":

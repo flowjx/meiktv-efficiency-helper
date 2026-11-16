@@ -194,7 +194,8 @@ git push
 2. 双击 `server/启动上报服务.bat` 或执行 `python server/install_server.py`，默认监听 `0.0.0.0:8790`；首次启动会生成查看口令 `admin_key` 写回配置文件。
 3. 浏览器打开 `http://<服务器IP>:8790/installs?key=<admin_key>` 查看安装明细。
 4. 同事电脑要能访问这台机器的 8790 端口（Windows 防火墙需放行入站）。
-5. 开机自启：在“启动”文件夹（`shell:startup`）放一个 vbs，隐藏窗口执行 `python install_server.py >> server.log 2>&1`（vbs 含中文路径时要存成 UTF-16 编码）。
+5. 开机自启：在“启动”文件夹（`shell:startup`）放一个 vbs，用 `pythonw.exe install_server.py` 无窗口启动（vbs 含中文路径时要存成 UTF-16 编码）。
+6. 日志在 `server/server.log`，由服务自己逐行追加并立即关闭文件，运行中也能用记事本打开；超过 5MB 会在启动时轮转为 `server.log.1`。**不要**再用 `>> server.log` 重定向，那样文件会被一直占用、打不开。
 
 ### 重新生成图标
 
