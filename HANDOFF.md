@@ -1,133 +1,169 @@
 # 交接文档：魅KTV效率助手（浏览器插件）
 
-> 写于 2026-11-16。新会话第一步：读完本文件，再看 `README.md`（面向使用者的功能说明）。
+> 更新于 2026-11-16，对应版本 **2.3.6**。新会话第一步：读完本文件，再看 `README.md`（面向同事的使用说明）。
 > 所有回复用中文，代码/命令/文件名保持原样。
+
+## 0. 先看这几条（最容易踩的坑）
+
+1. **仓库是公开的**（GitHub `flowjx/meiktv-efficiency-helper`，分支 `main`）。不要提交账号、密码、token、Cookie、webhook、**同事姓名**、分组名单、业务数据。同事姓名/分组/抄送名单只放 `server/config.local.json`（已 gitignore）。提交前用 `git diff --cached` 扫一遍。
+2. **用户的工作方式**：提需求 → 我改完只提交到本地 → 用户说“我先看看/我先试试”自己在浏览器里验证 → 用户说“发版 / 发 2.3.x”才升版本号并 push。**没说发版就不要 push 插件改动**（纯文档/服务端改动可以直接 push，不升版本号）。
+3. **会写线上数据的操作**（禅道提交备注、建版本、建测试单、执行 SQL）先问用户，得到明确同意并确认目标（哪张单、什么内容）才做；调试时用拦截请求的方式验证提交数据。
+4. **禅道成功时也会 `alert('保存成功')`**——成败一律以结果为准（版本列表里出现、历史记录里出现），不要凭 alert 判断。
+5. 用户要求的交互要**和禅道原生一致**（例如概况必须是禅道原生弹窗，不要自制弹窗）。
+6. 本机 git push 到 GitHub 经常 `SSL_ERROR_SYSCALL`，重试几次即可；推完用 `git ls-remote origin main` 对比 `git rev-parse HEAD` 确认。
 
 ## 1. 这是什么
 
-Chrome/Edge **Manifest V3 内容脚本插件**，给魅KTV 内部后台加"批量操作"按钮，省掉一个个点选/提交。
-纯前端，没有后台、没有 popup、没有 background service worker，也没有构建步骤——改完文件在扩展页点"重新加载"就生效。
+Chrome/Edge **Manifest V3** 插件（以“加载已解压的扩展程序”方式安装，无构建步骤），给魅KTV 内部后台加批量操作和效率功能。
 
-当前版本 `manifest.json` → `2.3.0`。2026-11-16 起是 git 仓库，远程在 GitHub **公开**仓库 `flowjx/meiktv-efficiency-helper`（分支 `main`）。**公开仓库：不要提交任何账号、token、Cookie、webhook、员工姓名或业务数据。**
-
-四个功能，按页面区分：
-
-| 页面 | 注入的按钮 | 作用 |
-|---|---|---|
-| `https://op.meiktv.com/*`（运营后台，FastAdmin 风格，`row[xxx]` 字段名） | 右下角浮动"批量选中门店" | 粘贴门店名称 JSON 数组 → 批量勾选/取消门店复选框 |
-| `http://music.remote.meiktv.com/music/play.html` | 原"添加"按钮**后面**的"批量添加播放列表" | 一批 store_id × 一个素材 ID，逐个调 `meiktvSongPlayList/save` |
-| `http://music.remote.meiktv.com/singer/index.html` | "歌手合并"按钮**前面**的"批量添加歌手" | 先按名字查重，再逐个调 `meiktvSinger/add` |
-| `https://bug.meiktv.com/*` 中的测试单列表（`body.m-testtask-browse`） | 表格上方"效率助手"工具栏 | 统计/筛选、产品项目合并、进度列、搜索、导出 CSV、复制摘要（2026-11-16 新增，`zentao.js`） |
+| 页面 | 入口 | 功能 | 代码 |
+|---|---|---|---|
+| 运营后台 `https://op.meiktv.com/*`（FastAdmin，`row[xxx]` 字段，内容在 iframe 里） | 右下角“批量选中门店” | 粘贴门店名 JSON 数组批量勾选/取消 | `content.js` |
+| 音乐后台播放列表 `music.remote.meiktv.com/music/play.html` | “添加”后面“批量添加播放列表” | store_id × 素材 ID 批量 `meiktvSongPlayList/save`，已有跳过、暂停/重试/导出 CSV | `content.js` |
+| 音乐后台歌手 `music.remote.meiktv.com/singer/index.html` | “歌手合并”前面“批量添加歌手” | 先 `getByName` 查重再 `add` | `content.js` |
+| 禅道测试单列表 `bug.meiktv.com`（`body.m-testtask-browse`） | 表格上方“效率助手”工具栏 | 加载全部分页、统计/筛选（状态/风险/提测分组/负责人）、提测人员列、进度列（最新两条备注）、跟进写备注、搜索、导出 CSV、复制摘要、复制归档 SQL、单击名称/双击行打开原生概况 | `zentao.js` + `zentao-list-main.js` |
+| 禅道提交测试（`m-testtask-create`） | 表单内 | 项目固定“测试计划跟进”(136)、本页弹窗新建版本并自动选中、“负责人”改“测试负责人”、默认抄送名单、admin 禁止提交 | `zentao-create-main.js` + `zentao-sign.js` |
+| 禅道编辑测试单（`m-testtask-edit`） | 名称框 | 历史数据名称以【某人】开头的，签名锁定不可改 | `zentao-sign.js` |
+| 所有上述页面 | 工具栏图标弹窗 / 页面左下角提示条 | 检查更新（GitHub，失败走内网）、一键重新加载插件 | `background.js` `popup.*` `update-notice.js` |
+| 后台静默 | — | 安装明细上报（姓名/部门/职位/版本/浏览器）、拉取分组和抄送名单 | `background.js` `identity.js` + `server/` |
 
 ## 2. 文件地图
 
+**插件**
+
 | 文件 | 内容 |
 |---|---|
-| `manifest.json` | 匹配规则、`all_frames: true`（op 后台是 iframe 套页面，必须开）、`run_at: document_idle` |
-| `background.js` | service worker：每小时（`chrome.alarms`）拉取仓库里的 `version.json`，和 manifest 版本比较，有新版就加工具栏角标"新"，结果写入 `chrome.storage.local.update` |
-| `update-config.js` | 仓库地址、分支、检查间隔。**换仓库只改这里**（background 和 popup 共用） |
-| `popup.html/js/css` | 点击工具栏图标的弹窗：当前/最新版本、更新内容、更新步骤、"立即检查"、"重新加载插件"（`chrome.runtime.reload()`，会从磁盘重新读取已解压的插件） |
-| `update-notice.js` | 注入所有业务页面（排在各 content script 前面）：有新版且用户没点过"知道了"时，在顶层页面左下角提示一次 |
-| `zentao-sign.js` | 提交测试页（`m-testtask-create`）：“负责人”文案改“测试负责人”；当前账号（取 `m=my&f=profile` 的“用户名”，只判断是否为 admin、不保存）为 admin 时，表单顶部红色提示，并在 window 捕获阶段拦截保存按钮 click 和 form submit（preventDefault + stopImmediatePropagation，禅道自己的提交处理不会执行），弹 alert；按钮不禁用，否则点击没反应；把 teamConfig.mailto 写到 `<html data-mkz-mailto>` 给页面环境脚本用。编辑页（`m-testtask-edit`）：名称以【某人】开头的历史数据锁定签名（真正 `name` 改 hidden + 只填内容的输入框）。2026-11-16 起**不再**在提交时自动加【当前用户】签名（用户要求去掉，提测人改看列表“提测人员”列） |
-| `zentao-list-main.js` | **world: MAIN**，测试单列表页：给插件替换进来的行重新绑定禅道原生弹窗（modalTrigger） |
-| `zentao-create-main.js` | **`world: "MAIN"`** 的 content script（要操作禅道页面里的 jQuery/chosen，隔离环境做不到；也因此不能用 chrome.* API）。只在 `body.m-testtask-create`：项目选 136 并 `trigger('change')` 走禅道 `loadProjectRelated` 刷版本，再 disabled + 同名 hidden 提交；`#buildBox` 外加“新建版本”/“刷新”（`loadProjectBuilds(136)`）。新建版本是本页弹窗：GET `m=build&f=create&project=136&onlybody=yes` 取原生表单默认值（product=90、builder=当前用户、date=今天），只替换 name/date/desc 后 POST 回同一地址，再刷新版本下拉并按名称选中，选中成功才算创建成功（重名在前端先拦截）。**注意禅道成功时也会 `alert('保存成功')`**，所以成败一律以结果（版本列表 / 历史记录）为准，结果找不到时才把 alert 文字当失败原因（2026-11-16 用户实测踩到，已修，跟进提交同样处理）；抄送名单**不在代码里**：`zentao-sign.js`（隔离环境）从 `chrome.storage.local.teamConfig.mailto` 读出写到 `<html data-mkz-mailto>`，本脚本等它出现后按禅道**显示名**（去掉“X:”前缀）匹配选中；用户口头给的名字可能和禅道不一致，以禅道为准。2026-11-16 页面验证：项目提交值 136、抄送 6 人、刷新正常；新建版本弹窗用拦截 POST 的方式验证过提交数据，未真实创建 |
-| 分组/抄送名单 | **不在仓库里**：`server/config.local.json` 的 `team.groups`（组名→成员姓名）、`team.mailto`；服务 `GET /api/team-config` 返回，background.js 的 `fetchTeamConfig()` 在安装/启动/每小时拉取，存 `chrome.storage.local.teamConfig`。成员名匹配时去掉括号备注和“-xxx”后缀（如“张三-小名”→“张三”、“张三(昵称)”→“张三”） |
-| `identity.js` | 只注入 bug.meiktv.com 顶层页面：读右上角 `#userNav .user-name`，每天最多拉一次 `m=my&f=profile` 取部门/职位，发给 background 上报。**不取用户名（是手机号）** |
-| `server/install_server.py` | 安装明细上报服务：`POST /api/ping` 写 MySQL 表 `helper_install`（自动建表，按 client_id upsert），`GET /installs?key=` 明细页。配置在 `server/config.local.json`（gitignore，含数据库密码，绝不提交），模板 `config.example.json` |
-| `version.json` | 线上最新版本信息（`version/date/notes/download/history`），插件读的就是 GitHub 上这个文件 |
-| `scripts/bump_version.py` | 发版脚本，同时改 manifest.json 和 version.json |
-| `zentao.js` / `zentao.css` | 禅道测试单列表增强，独立的 content script，和 `content.js` 互不依赖。类名前缀 `mkz-` |
-| `content.js` | op 后台和音乐后台的逻辑（约 930 行，一个 IIFE）。见下方函数索引 |
-| `styles.css` | 按钮、面板、toast 样式。类名统一前缀 `meiktv-batch-store-*` / `meiktv-music-*` |
-| `icons/` | 16/32/48/128 PNG，2026-11-16 重新设计（玫红→紫渐变圆角方 + 白闪电 + 小黄星，16px 无星），由 `scripts/make_icon.py` 生成，改图标改这个脚本再运行 |
-| `README.md` | 功能说明 + 安装步骤 |
+| `manifest.json` | 3 组 content_scripts：① op/音乐后台 `update-notice.js + content.js`；② `bug.meiktv.com/*`：`update-notice.js, identity.js, zentao.js, zentao-sign.js`（隔离环境）；③ `bug.meiktv.com/*` **`world: "MAIN"`**：`zentao-create-main.js, zentao-list-main.js`。均 `all_frames: true`。权限 `alarms, storage`；host_permissions 含 `raw.githubusercontent.com` 和内网 `http://172.16.5.36/*` |
+| `update-config.js` | 所有地址集中在这：GitHub 仓库/分支、内网更新源、上报地址、分组配置地址、检查间隔（60 分钟）、超时。**换地址只改这里**（并同步 manifest host_permissions） |
+| `background.js` | service worker：`checkUpdate()`（`fetchLatest()` 先 GitHub 后内网）、`report()` 安装上报、`fetchTeamConfig()` 拉分组/抄送名单；安装/启动/每小时 alarm 触发；消息 `meiktv-check-update`、`meiktv-reload`、`meiktv-identity`、`meiktv-team-config` |
+| `popup.html/js/css` | 工具栏弹窗：当前/最新版本、更新内容、按来源（GitHub/内网）显示不同下载步骤、立即检查、重新加载插件（`chrome.runtime.reload()`） |
+| `update-notice.js` | 顶层页面左下角新版本提示条，每个版本点“知道了”后不再弹 |
+| `identity.js` | 禅道顶层页面：右上角姓名 + 每天最多一次 `m=my&f=profile` 取部门/职位 → background 上报。**不取“用户名”（是手机号）** |
+| `content.js` / `styles.css` | op 后台与音乐后台功能（见第 6 节），类名前缀 `meiktv-` |
+| `zentao.js` / `zentao.css` | 禅道测试单列表增强（隔离环境），类名前缀 `mkz-`；`zentao.css` 也承载提交测试页、弹窗等全部禅道相关样式 |
+| `zentao-list-main.js` | MAIN 环境：给插件替换进来的列表行重新绑定禅道原生弹窗 `$(a).modalTrigger({type:'iframe'})` |
+| `zentao-create-main.js` | MAIN 环境：提交测试页的项目锁定、新建版本弹窗、默认抄送（操作禅道 jQuery/chosen 必须在页面环境；MAIN 环境不能用 chrome.* API） |
+| `zentao-sign.js` | 隔离环境：提交测试页改“测试负责人”文案、admin 拦截、把抄送名单写到 `<html data-mkz-mailto>` 给 MAIN 脚本；编辑页锁定历史签名 |
+| `version.json` | 最新版本信息 `version/date/notes/download/history`，插件读 GitHub 上的这个文件 |
+| `scripts/bump_version.py` | 发版：同时改 manifest.json 和 version.json（版本号必须递增） |
+| `scripts/make_icon.py` | 生成 `icons/`（玫红→紫渐变圆角方 + 白闪电 + 小黄星，16px 无星） |
+| `meiktv-logo-transparent.png` | 品牌原 logo，仅作素材，插件不用 |
 
-`content.js` 函数索引：
+**服务端（维护者本机运行）**
 
-- **入口**：`start()` → `syncButton()`，并用 `MutationObserver`（100ms 防抖）持续检测页面，元素出现就加按钮、消失就移除按钮和面板。
-- **判断页面**：`isMusicPage()`、`isSingerPage()`、`findSpecifiedStoreRadio()`、`findDirectStoreHeading()`、`findButtonTrigger()`
-- **门店勾选**（op 后台）：`createPanel()` → `applyStoreSelection(select)` → `parseStoreNames()` / `getStoreCheckboxes()` / `getStoreName()`；`activateStoreSelectionMode()` 会先自动点"指定门店 / 自定义门店"单选框
-- **播放列表**（music 页）：`createMusicPanel()` → `runMusicBatch()`；请求统一走 `musicRequest()`；`containsMaterialId()` 用于判断门店是否已有该素材；`downloadMusicCsv()` 导出
-- **歌手**（singer 页）：`createSingerPanel()` → `runSingerBatch()`（两阶段：`singerQueryByName()` 查重 → `singerRequest()` 添加）；`parseSingerItems()` 解析输入
-- **登录态**：`refreshMusicAuth()` / `getStoredToken()` / `musicHeaders()`——每次请求前重新从 localStorage/sessionStorage/meta/cookie 读 `token`，放进请求头 `token`；Cookie（`JSESSIONID`）靠 `credentials: 'include'` 自动带上。**插件里没有任何硬编码凭证，保持这样。**
+| 文件 | 内容 |
+|---|---|
+| `server/install_server.py` | 标准库 http.server + pymysql，监听 `0.0.0.0:8790`。接口见第 4 节 |
+| `server/config.local.json` | **gitignore**：MySQL 连接、`admin_key`（明细页口令）、`team.groups` / `team.mailto`（同事姓名）。模板 `config.example.json` |
+| `server/启动上报服务.bat` | 手动前台启动（带控制台） |
+| `server/server.log` | gitignore；服务逐行追加、立即关闭，运行中可用记事本打开；>5MB 启动时轮转为 `.log.1` |
 
-## 3. 禅道测试单增强（zentao.js）
+## 3. 禅道相关（zentao*.js）
 
-- 站点是禅道旧版（12.x 风格，GET 参数路由 `index.php?m=&f=`，无 iframe 外壳）。需要用户自己登录，插件复用登录态。
-- 只在 `body.m-testtask-browse` 且存在 `#taskList` 时生效；列按**表头文字**定位（ID/名称/所属产品/所属项目/版本/负责人/开始日期/结束日期/状态），禅道改列名或用户自定义列后要同步改 `C` 映射。
-- 加载全部：读 `.pager[data-link-creator]`，把 `{recPerPage}` 换成总数、`{page}` 换成 1 重新拉列表并替换 tbody（总数 > 1000 不做）。替换后的行没有禅道原生弹窗绑定：`zentao-list-main.js`（world: MAIN）监听 `#taskList`，给没有 `zui.modaltrigger` 数据的 `a.iframe` 调 `$(a).modalTrigger({type:'iframe'})`，参数已核对与原生完全一致。双击行 / 单击名称（名称 a 已去掉 href，原来跳“用例”页）= `a.iframe[href*="f=view"].click()`，即禅道原生概况弹窗；`refreshAfterModalClose()` 轮询 `#triggerModal.in` 由有到无后刷新该行进度。（用户明确要求与操作区“概况”效果一致，不要自制弹窗。）
-- 提测人员 / 提测分组（2026-11-16）：原“所属产品”列改为“提测人员”，取历史第一条“创建”的人（`parseHistory()` 的 `creator`，缓存键升到 `mkz-progress2:`）；分组 = teamConfig.groups 里该成员所在组，名单外归“其他”，统计栏“提测分组”可筛选，搜索/CSV 也含提测人和分组。
-- 进度：对每行的"概况"链接（`m=testtask&f=view&taskID=N&onlybody=yes`）并发 4 个请求，解析 `#actionbox .histories-list > li`：头部文字形如 `2026-11-13 17:50:40, 由 <strong>张三</strong> 编辑。`，备注在 `.article-content.comment`。缓存在页面 localStorage `mkz-progress:<id>`，30 分钟过期；筛选偏好存 `mkz-prefs`。
-- **跟进（2026-11-16 新增）**：进度列的“跟进”按钮 → 弹窗写备注 → `submitFollowUp()`：GET 该行“编辑”链接（加 `onlybody=yes`）拿到编辑表单，**原样带回全部字段**（含 desc、mailto 多选），只设置 `comment`（纯文本转义、换行转 `<br />`），POST 回同一地址；成功时禅道返回 `parent.location=...view...` 脚本，失败通常是 `alert(...)`。最后强制刷新该行历史，最新备注等于提交内容才算成功。
-  - 为什么不用 `m=action&f=comment`：本站禅道该方法对账号返回 `user-deny`（无权限）。
-  - 已在 #111 真实验证（2026-11-16 16:23 维护者账号 “【效率助手】跟进功能测试，请忽略”）：提交前后编辑表单全部字段无差异。
-  - 自己写的备注在详情页 li 里会多一个“修改备注”编辑框，文本出现两次；解析只取第一个 `.comment`，不受影响。
-- **复制归档SQL（2026-11-16 新增）**：`copyArchiveSql()` 取当前可见行中 `status === 'done'` 的，生成 `UPDATE \`meiktv_bug\`.\`meiktv_testtask\` SET \`product\` = 91 WHERE \`id\` = N;`（`ARCHIVE_PRODUCT_ID = 91` 是归档用的产品，id 去掉前导 0），首行是带日期和单号的注释。插件不执行 SQL。
-- "N 天无更新"按历史记录最后一条日期算，阈值 `STALE_DAYS = 3`。
-- 2026-11-16 在内置浏览器里把脚本注入真实页面验证过：42 条全部加载，统计 进行中23/未开始7/被阻塞5/已完成7，逾期 27、3 天无更新 17；搜索、高亮、筛选正常。**还没以扩展形式安装后验证**，"导出CSV""复制摘要"按钮未在真实页面点过。
-- 可以继续做的：在列表直接加备注（禅道 `m=action&f=comment` 接口）、按负责人分组视图、把摘要一键发企微（需要后端或 webhook，浏览器插件直接发会暴露 webhook）。
+站点：禅道 **11.5**（`/js/all.js?v=11.5`），GET 路由 `index.php?m=&f=`，弹窗用 zui `modalTrigger`（iframe，`#triggerModal`），下拉用 chosen。插件复用用户登录态。
 
-## 4. 接口约定（music.remote.meiktv.com）
+**列表页（`zentao.js`）**
+- 只在 `body.m-testtask-browse` + `#taskList` 生效；列按**表头文字**定位（`C` 映射：ID/名称/所属产品/所属项目/版本/负责人/开始日期/结束日期/状态/操作），禅道改列名要同步改。
+- **加载全部**：`.pager[data-link-creator]` 里 `{recPerPage}`→总数、`{page}`→1，重新拉列表替换 tbody（>1000 条不做）。替换后的行由 `zentao-list-main.js` 重新绑定原生弹窗（参数已核对与原生一致）。
+- **列宽**：表格 `table-layout: fixed`，给 ID 60 / 提测人员 120 / 版本 90px 定宽，其余给进度列；操作列隐藏 `#action-divider`（用例/关联用例/报告列表），宽 110px。
+- **提测人员列**：原“所属产品”列；`parseHistory()` 取历史第一条“创建”的人 → `creator`；下面一行小字“分组 · 日期 提测”。“所属项目”列隐藏。
+- **进度列**：并发 4 个请求 GET `m=testtask&f=view&taskID=N&onlybody=yes`，解析 `#actionbox .histories-list > li`（头部 `2026-11-13 17:50:40, 由 <strong>张三</strong> 编辑。`，备注 `.article-content.comment`，取第一个——自己写的备注会多一个“修改备注”编辑框）。显示最新两条备注（精确到分钟）+ 最近操作 + “N 天无更新”（`STALE_DAYS = 3`）。缓存 localStorage `mkz-progress2:<id>`（v2 加了 creator），30 分钟；筛选偏好 `mkz-prefs`。
+- **统计栏**：状态 / 风险（已逾期、今明到期、3 天无更新、未完成且无备注）/ **提测分组**（teamConfig.groups，名单外归“其他”；名单没加载时提示“未加载”）/ 负责人，点 chip 筛选再点取消。
+- **看概况**：单击名称（名称 `<a>` 已去掉 href，原来跳“用例”页）或双击行空白处 = 点该行 `a.iframe[href*="f=view"]`，即禅道原生概况弹窗；`refreshAfterModalClose()` 轮询 `#triggerModal.in` 由有到无后刷新该行进度。
+- **跟进**：进度列“跟进”按钮（flex 竖直居中）→ 弹窗 → `submitFollowUp()`：GET 该行编辑链接（`onlybody=yes`）拿表单，**原样带回全部字段**，只设 `comment`（转义、换行转 `<br />`），POST 回同一地址；之后强制刷新历史，最新备注等于提交内容才算成功。不用 `m=action&f=comment` 是因为本站该方法返回 `user-deny`。已在 #111 真实验证（字段无变化）。
+- **按钮**：清空筛选、刷新进度、导出CSV（含提测人员/分组/提测时间、最新两条备注）、复制摘要（被阻塞/已逾期/今明到期）、**复制归档SQL**（当前可见的已完成单 → `UPDATE \`meiktv_bug\`.\`meiktv_testtask\` SET \`product\` = 91 WHERE \`id\` = N;`，id 去前导 0，首行注释；插件不执行）。
+- 搜索：ID/名称/负责人/提测人员/分组/版本/备注，空格分隔多词 AND，名称高亮，`/` 聚焦。
 
-| 接口 | 方法/格式 | 关键参数 |
-|---|---|---|
-| `/music-admin/meiktvSongPlayList/page` | POST JSON | `{storeId, pageNum:1, pageSize:1000}`，返回里任意层级出现 `materialId == 目标` 就算"已有" |
-| `/music-admin/meiktvSongPlayList/save` | POST JSON | `{storeIds:"<单个id字符串>", materialId, showType:0, showRuleType:0, showRule:0, weight:0}` |
-| `/music-admin/meiktvSinger/getByName?name=` | GET | 返回结构不固定，由 `singerExistsInPayload()` 宽松判断 |
-| `/music-admin/meiktvSinger/add` | POST **FormData** | `singerId=0, name, pinyin, fullPinyin, hot=0, status=0, hasAvatar=1, language=0, category=0, thumb` |
+**提交测试页（`zentao-create-main.js` + `zentao-sign.js`）**
+- 项目：选 136（测试计划跟进）并 `trigger('change')` 走禅道 `loadProjectRelated` 刷版本，然后 disabled + 同名 hidden input 提交。
+- 新建版本：`#buildBox` 外加“+ 新建版本 / 刷新”。弹窗默认名称=今天 `YYYYMMDD`、日期=今天、描述选填；GET `m=build&f=create&project=136&onlybody=yes` 取原生表单默认值（product=90、builder=当前用户），只换 name/date/desc 后 POST；再 `loadProjectBuilds(136)` 并按名称选中，选中成功才算成功；重名前端先拦。用户已真实用过（2026-11-16 首次真实建版本时发现 alert 误判，已修）。
+- 默认抄送：名单来自 teamConfig.mailto（不在代码里），`zentao-sign.js` 写到 `<html data-mkz-mailto>`，MAIN 脚本按禅道**显示名**（去掉“X:”前缀）匹配。禅道里的名字以禅道为准（用户口头给的可能有错别字）。不在内网拿不到名单就不预填。
+- “负责人”文案改“测试负责人”。
+- **admin 禁止提交**：`m=my&f=profile` 的“用户名”为 admin 时，表单顶部红色提示；window 捕获阶段拦截保存 click 与 form submit（preventDefault + stopImmediatePropagation）并 alert“admin 账号不能提交测试单，请用自己的账号提交”；按钮不禁用（禁用后点击没反应）。只是前端限制，彻底禁止需在禅道后台去权限。
+- 2026-11-16 起**不再**给名称自动加【当前用户】签名（用户要求去掉）；编辑页仍锁定历史数据里已有的签名。
 
-- 素材 ID 是**素材页面的 ID，不是歌曲 ID**（面板里有提示，业务容易填错）。
-- 登录失效判断：HTTP 401/403、业务 code 401/403、被重定向或返回 HTML。命中后自动暂停，用户重新登录后点"继续"。
-- 判断失败：HTTP 非 2xx、业务 `code >= 400`、`success/ok/result === false`。
+## 4. 服务端与运维（维护者本机 172.16.5.36）
 
-相关项目：`../meiktv-songlist-batch/batch_save.py` 是同一个 save 接口的 **Python 命令行版**（支持多个素材 ID，但 token/JSESSIONID 要手动从浏览器抓）。插件版是它的"不用抓凭证"替代品。
+| 接口 | 用途 |
+|---|---|
+| `POST /api/ping` | 插件安装上报，按 client_id upsert 到 MySQL `meiktv_business.helper_install`（首次启动自动建表） |
+| `GET /installs?key=<admin_key>` | 安装明细页（安装数、24h 活跃、待更新、每人版本/最后活跃） |
+| `GET /api/team-config` | 返回 `config.local.json` 的 `team.groups` 和 `team.mailto` |
+| `GET /update/version.json`、`/update/plugin.zip` | 内网备用更新源：`git show origin/main:version.json`、`git archive origin/main`（按 sha 缓存，目录结构同 GitHub zip） |
+| `GET /health` | 健康检查 |
+
+- MySQL：本机 `localhost:3306`，库 `meiktv_business`，连接信息在 `config.local.json`（不要写进任何提交）。
+- **开机自启**：`%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\meiktv-helper-install-server.vbs`（UTF-16 编码，`pythonw.exe` 无窗口启动；写死了插件目录和 `...\Python311\pythonw.exe`）。不要再用 `cmd >> server.log` 重定向（会锁文件）。
+- **重启服务**（改了 config.local.json 或 server 代码后必须重启）：
+  ```powershell
+  Get-NetTCPConnection -LocalPort 8790 -State Listen | % { Stop-Process -Id $_.OwningProcess -Force }
+  Start-Process wscript.exe -ArgumentList ('"' + [Environment]::GetFolderPath('Startup') + '\meiktv-helper-install-server.vbs"')
+  ```
+- 改分组/抄送名单：编辑 `config.local.json` 的 `team` → 重启服务；插件每小时拉取，打开测试单列表页时也会顺手刷新。**不用发版**。成员名匹配时去掉括号备注和“-xxx”后缀。
+- 同事要能访问 8790 需本机防火墙放行入站（用户自己用管理员执行 `netsh advfirewall firewall add rule name="魅KTV效率助手上报" dir=in action=allow protocol=TCP localport=8790`；是否已执行未确认）。本机 IP 变了要改 `update-config.js` + manifest host_permissions 并发版。
+- 不在内网 / 服务没开时：上报静默失败、分组显示“未加载”、提交测试不预填抄送，其他功能正常。
 
 ## 5. 在线更新与发版
 
-- 原理：已解压安装的插件浏览器不会自动更新，所以只做"检查 + 提醒 + 一键重新加载"。Manifest V3 不允许远程加载代码，不要尝试从网上拉 js 执行。
-- 发版：`python scripts/bump_version.py 2.3.1 "说明"` → commit → `git push`。只改代码不改版本号，用户不会收到提醒。
-- raw.githubusercontent.com 有约 5 分钟 CDN 缓存，推送后不一定马上能检查到。
-- 想换成公司内网地址：只改 `update-config.js` 的 URL，并把新域名加进 manifest 的 `host_permissions`。
-- 2026-11-16 用 node 模拟 chrome API 测过版本比较和检查逻辑（有新版、同版、断网三种情况）；弹窗和提示条还没在真实浏览器里装插件看过。
+- 已解压安装的插件不会被浏览器自动更新，只做“检查 + 提醒 + 一键重新加载”。MV3 禁止远程代码，不要尝试远程拉 js。
+- 检查：每 60 分钟 + 浏览器启动 + 弹窗“立即检查”。先 GitHub raw（8 秒超时，约 5 分钟 CDN 缓存），失败走内网；`update.source` 记录来源，内网时下载链接换内网 zip。2.3.6 之前的版本没有内网兜底。
+- **发版流程**：
+  ```bash
+  python scripts/bump_version.py 2.3.7 "更新说明1" "更新说明2"
+  git add -A
+  git diff --cached        # 扫一遍：无密码/口令/手机号/同事姓名
+  git commit -m "release 2.3.7"
+  git push                 # 失败就重试；内网源取 origin/main，push 成功内网才更新
+  git ls-remote origin main; git rev-parse HEAD   # 两者一致
+  ```
+  发完用 `curl` 看 GitHub raw（按 commit sha 的地址绕过缓存）和 `http://172.16.5.36:8790/update/version.json` 都是新版本。
+- 版本历史：2.1.0 原始（op/音乐）→ 2.3.0 在线更新 + 禅道列表增强 → 2.3.1 新图标 → 2.3.2 弹窗去仓库链接 → 2.3.3 列宽/分钟时间/安装统计/1 小时检查 → 2.3.4 跟进/归档SQL/隐藏三个操作按钮 → 2.3.5 提交测试签名+项目锁定+新建版本弹窗+默认抄送、双击原生概况、alert 误判修复 → 2.3.6 提测人员列+分组筛选、名称点开概况、去签名、测试负责人、admin 禁提、内网更新兜底。
 
-- **内网备用更新源（2026-11-16）**：`background.js` 的 `fetchLatest()` 先取 GitHub raw（8 秒超时），失败再取 `UPDATE_CONFIG.intranetVersionUrl`；`update.source` 记 `github`/`intranet`，intranet 时下载地址换成 `intranetZipUrl`，弹窗显示内网步骤。服务端 `/update/version.json` = `git show origin/main:version.json`，`/update/plugin.zip` = `git archive origin/main`（按提交 sha 缓存）。所以**发版必须成功 push**，内网才会跟着更新；push 失败时 origin/main 不动，内网仍给旧版。已用模拟测试 GitHub 正常/不通/超时/全不通四种情况。
+## 6. op 后台 / 音乐后台（content.js）
 
-## 5.1 安装明细上报（2026-11-16 新增）
+- 入口 `start()` → `syncButton()`，MutationObserver（100ms 防抖）检测页面，元素出现加按钮、消失移除。
+- 门店勾选：`createPanel()` → `applyStoreSelection()`；名称去 `A-` 前缀匹配，也可直接填复选框 value；先 `activateStoreSelectionMode()` 点“指定/自定义门店”。
+- 播放列表：`createMusicPanel()` → `runMusicBatch()`，请求走 `musicRequest()`；`containsMaterialId()` 判断已有；`downloadMusicCsv()` 导出。素材 ID 是**素材页面 ID，不是歌曲 ID**。
+- 歌手：`createSingerPanel()` → `runSingerBatch()`（`singerQueryByName()` → `singerRequest()`）。
+- 登录态：每次请求前从 storage/meta/cookie 读 `token` 放请求头，Cookie 靠 `credentials: 'include'`；**不硬编码任何凭证**。失效（401/403/重定向/HTML）自动暂停，重新登录后点继续。
 
-- 链路：插件 background.js → `UPDATE_CONFIG.reportUrl`（当前 `http://172.16.5.36:8790/api/ping`，是维护者本机局域网 IP）→ `server/install_server.py` → 本机 MySQL `meiktv_business.helper_install`。
-- 上报时机：安装/重新加载时立即、浏览器启动和每次定时检查时（节流 60 分钟）、禅道识别到的姓名部门职位变化时立即。上报字段：client_id（随机 UUID）、版本、浏览器、系统、姓名、部门、职位；服务端记录来源 IP、首次/最后时间、次数。
-- **开机自启**（2026-11-16 配置）：`%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\meiktv-helper-install-server.vbs`，登录 Windows 后用 `pythonw.exe` 无窗口启动服务；日志由服务自己 `log()` 逐行追加到 `server/server.log` 并立即关闭（已 gitignore）。2026-11-16 曾用 `cmd /c ... >> server.log` 重定向，导致文件被一直占用、记事本打不开，已改掉。脚本里写死了插件目录和 pythonw 路径（`...\Python311\pythonw.exe`），目录或 Python 换了要改这个 vbs；不想自启就删掉它。重复启动时第二个实例端口被占会直接退出。手动停服务：`Get-NetTCPConnection -LocalPort 8790 -State Listen | % { Stop-Process -Id $_.OwningProcess }`。
-- 服务要一直开着，同事才能上报；本机 IP 变了要改 `update-config.js` 和 manifest `host_permissions` 再发版。同事访问需要本机防火墙放行 8790 入站。
-- 2026-11-16 已联调：模拟插件上报（匿名 → 带姓名）、口令校验（无口令 403）、非法 client_id 拒绝、明细页渲染均正常，测试行已删除。
+| 接口 | 格式 | 参数 |
+|---|---|---|
+| `/music-admin/meiktvSongPlayList/page` | POST JSON | `{storeId, pageNum:1, pageSize:1000}` |
+| `/music-admin/meiktvSongPlayList/save` | POST JSON | `{storeIds:"<单个id>", materialId, showType:0, showRuleType:0, showRule:0, weight:0}` |
+| `/music-admin/meiktvSinger/getByName?name=` | GET | 返回结构不固定 |
+| `/music-admin/meiktvSinger/add` | POST FormData | `singerId=0, name, pinyin, fullPinyin, hot=0, status=0, hasAvatar=1, language=0, category=0, thumb` |
 
-## 6. 安装与调试
+相关项目：`../meiktv-songlist-batch/batch_save.py` 是 save 接口的 Python 命令行版（需手动抓 token）。
 
-1. Chrome/Edge 打开 `chrome://extensions`（或 `edge://extensions`），开启开发者模式。
-2. "加载已解压的扩展程序" → 选本目录 `F:\PycharmProjects\pythonProject\魅KTV效率助手`（同事用 `git clone` 下来的目录）。
-3. 改完代码：扩展页点刷新图标，**再刷新目标页面**。
+## 7. 安装与调试
 
-调试：目标页 DevTools Console 搜 `[门店批量选择助手]`。注意 op 后台内容在 iframe 里，Console 左上角要切到对应 frame 才能看到日志。
+1. `chrome://extensions` / `edge://extensions` 开开发者模式 → 加载已解压 → 选本目录（同事用 `git clone` 的目录）。需 Chrome/Edge ≥ 111（MAIN world 脚本）。
+2. 改代码后：扩展页刷新或弹窗“重新加载插件”，**再刷新目标页面**。
+3. Console 日志前缀：`[门店批量选择助手]`（op/音乐，op 要切到 iframe）、`[禅道测试单助手]`、`[禅道提交测试助手]`。
+4. 调试技巧：内置浏览器打不开 `localhost`/内网 http 资源注入（https 页面混合内容被拦），验证插件逻辑只能把代码贴进页面执行，或在 node 里 mock chrome API；需要 chrome.* 的脚本要 mock。
+5. 无自动化测试。批量提交、跟进、建版本都会写线上数据。
 
-无自动化测试；验证只能在真实后台手动点。批量提交会真实写线上数据，测试时用 1–2 个门店/歌手。
+## 8. 验证状态（截至 2.3.6）
 
-## 7. 已知问题 / 待办（2026-11-16 读代码发现）
+- 用户已实际使用：跟进、复制归档 SQL、新建版本（踩出 alert 误判已修）、列表各功能。
+- 只做过页面注入/模拟验证、未经用户确认实测：提测人员列与分组筛选的最终界面、名称单击开概况、admin 拦截（没用真 admin 登录）、内网更新兜底（node 模拟四种网络情况 + 实际下载内网 zip）、弹窗“来源：公司内网”样式。
+- 音乐后台的 CSV 修复、歌手按钮位置修复：未在真实页面验证。
 
-1. ~~CSV 导出换行/BOM 多了反斜杠~~ —— 2026-11-16 已修（`downloadMusicCsv()`），待在真实页面导出验证。
-2. ~~歌手按钮位置不会自我修正~~ —— 2026-11-16 已修（`syncButton()` 对 singer 页也调用 `placeMusicButton()`），待真实页面验证。
-3. **歌手查重偏宽**：`singerExistsInPayload()` 只要返回里有 `id/singerId` 加任意名字字段就判定"已存在"，如果 `getByName` 是模糊匹配，同名前缀的歌手会被误判跳过。上线前最好确认接口是否精确匹配。
-4. 歌手批量没有"重试失败项"和"导出 CSV"，播放列表那边有，业务要的话照搬。
-5. ~~README 目录名、manifest 描述过时~~ —— 2026-11-16 已更新。
-6. `syncButton()` 每次 DOM 变动都打一条 `console.debug`，页面变化频繁时日志很吵（默认 Verbose 级别才显示，影响不大）。
-7. `musicState.abortController` 创建了但暂停时从未 `abort()`，暂停靠循环里轮询实现；代码里的 AbortError 分支实际走不到，不影响功能。
+## 9. 已知问题 / 待办
 
-## 8. 改动约定
+1. **同事姓名残留在 git 历史**：2.3.5 及以前的提交里 `zentao-create-main.js`、README、HANDOFF 写过默认抄送的 6 位同事姓名和维护者姓名，已从当前文件移除但历史仍在。彻底清除需改写历史并强推（已 clone 的同事要重新 clone），**未经用户同意不要做**。
+2. 歌手查重偏宽：`singerExistsInPayload()` 只要有 id + 任意名字字段就判“已存在”，若 `getByName` 是模糊匹配会误跳过。
+3. 歌手批量没有“重试失败项 / 导出 CSV”。
+4. admin 禁提、签名锁定都只是前端限制，没装插件的人不受约束。
+5. 内网服务依赖维护者电脑开机、IP 不变、防火墙放行（防火墙是否已放行未确认）。
+6. `content.js` 的 `syncButton()` 每次 DOM 变化打 `console.debug`；`musicState.abortController` 从未 abort（暂停靠轮询），均不影响功能。
+7. 测试单超过 1000 条时不做“加载全部”。
+8. 可以继续做（用户提过方向，未定）：基于页面数据的提醒（逾期/阻塞弹窗或系统通知）、按负责人分组视图、摘要推送企微（要走服务端，插件里不能放 webhook）、仓库转私有 + 只走内网更新（需先发一版让大家具备内网兜底，再转私有）。
 
-- 改功能同步更新 `README.md`，发版用 `scripts/bump_version.py` 升版本号（不要只改 manifest，version.json 会对不上）。
-- 新增页面支持：在 `manifest.json` 的 `matches` 和 `host_permissions` 里都加上，再在 `content.js` 加对应的 `isXxxPage()` 和按钮锚点逻辑。
-- 新增的 DOM id/类名沿用 `meiktv-` 前缀，避免和后台页面冲突。
-- 不要在插件里写死 token/Cookie，也不要把门店/素材数据存进插件。
+## 10. 改动约定
 
-## 9. 隐私注意（2026-11-16 补记）
-
-- 仓库是**公开**的。2.3.5 及更早的提交里，`zentao-create-main.js`、README、HANDOFF 曾写入过 6 位同事姓名（默认抄送名单）和一条维护者姓名，之后已移除，但**仍留在 git 历史里**。如需彻底清除，需要改写历史并强推（会影响已 clone 的同事，需他们重新 clone），未经用户同意不要做。
-- 今后同事姓名、分组只放 `server/config.local.json`。
+- 改功能同步更新 `README.md`（面向同事）和本文件（面向维护者）；发版用 `scripts/bump_version.py`。
+- 新增页面：manifest 的 `matches` 和 `host_permissions` 都要加；需要操作页面 jQuery/组件的放 MAIN world 脚本，需要 chrome.* 的放隔离脚本，两者用 DOM（如 `data-*` 属性）传数据。
+- 新 DOM id/类名：op/音乐用 `meiktv-`，禅道用 `mkz-`。
+- 不写死 token/Cookie/口令，不存业务数据，不放同事姓名。
