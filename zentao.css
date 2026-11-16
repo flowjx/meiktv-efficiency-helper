@@ -294,3 +294,7 @@
 
 /* 双击行打开禅道原生概况弹窗 */
 #taskList tbody tr { cursor: default; }
+
+/* 提测人员列（原“所属产品”列） */
+.mkz-creator { font-weight: bold; color: #3c4353; }
+.mkz-creator__meta { color: #a3abba; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

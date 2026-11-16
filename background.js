@@ -87,6 +87,23 @@ async function report(force) {
   }
 }
 
+// ---------- 分组 / 默认抄送名单（从内网上报服务拉取，存 chrome.storage.local.teamConfig） ----------
+async function fetchTeamConfig() {
+  if (!UPDATE_CONFIG.teamConfigUrl) return;
+  try {
+    const res = await fetch(`${UPDATE_CONFIG.teamConfigUrl}?t=${Date.now()}`, { cache: 'no-store' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    await chrome.storage.local.set({
+      teamConfig: { groups: data.groups || {}, mailto: data.mailto || [], at: Date.now() },
+      teamConfigError: ''
+    });
+  } catch (e) {
+    // 不在公司网络时拉不到，保留上次的配置
+    await chrome.storage.local.set({ teamConfigError: e.message || '连接失败' });
+  }
+}
+
 async function onIdentity(identity) {
   const { identity: old = {} } = await chrome.storage.local.get('identity');
   const changed = ['name', 'dept', 'role'].some(k => (identity[k] || '') !== (old[k] || ''));
@@ -98,22 +115,29 @@ chrome.runtime.onInstalled.addListener(() => {
   chrome.alarms.create(ALARM, { periodInMinutes: UPDATE_CONFIG.checkIntervalMinutes });
   checkUpdate();
   report(true);
+  fetchTeamConfig();
 });
 
 chrome.runtime.onStartup.addListener(() => {
   chrome.alarms.create(ALARM, { periodInMinutes: UPDATE_CONFIG.checkIntervalMinutes });
   checkUpdate();
   report(false);
+  fetchTeamConfig();
 });
 
 chrome.alarms.onAlarm.addListener(alarm => {
   if (alarm.name === ALARM) {
     checkUpdate();
     report(false);
+    fetchTeamConfig();
   }
 });
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  if (msg && msg.type === 'meiktv-team-config') {
+    fetchTeamConfig().then(() => chrome.storage.local.get('teamConfig')).then(({ teamConfig }) => sendResponse(teamConfig || null));
+    return true;
+  }
   if (msg && msg.type === 'meiktv-identity' && msg.identity) {
     onIdentity(msg.identity).then(() => sendResponse({ ok: true }));
     return true;

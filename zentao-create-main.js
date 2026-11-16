@@ -1,14 +1,13 @@
 // 禅道“提交测试”页默认值（运行在页面自身环境 world: MAIN，才能操作禅道的 jQuery / chosen 下拉组件）：
 // 1) 所属项目默认“测试计划跟进”（projectID 136）且锁定不可改；
 // 2) 版本下拉旁加“新建版本”（本页弹窗填写，提交禅道原生“创建版本”表单）和“刷新”，建好后自动刷新并选中新版本；
-// 3) 抄送人默认加上固定名单（按禅道里的显示姓名匹配，不写账号）。
+// 3) 抄送人默认加上固定名单：名单不写在代码里（公开仓库），由 zentao-sign.js 从内网配置读出写到 <html data-mkz-mailto>，按禅道显示姓名匹配。
 // 注意：MAIN world 脚本不能用 chrome.* 接口；改配置直接改下面的常量。
 (function () {
   'use strict';
 
   const PROJECT_ID = '136'; // 测试计划跟进
   const BUILD_CREATE_URL = `/index.php?m=build&f=create&project=${PROJECT_ID}&onlybody=yes`;
-  const DEFAULT_MAILTO = ['蒋晓华', '王彦春', '谭兴春', '刘守铜', '郭帅兵', '丁萍花'];
   const LOG = '[禅道提交测试助手]';
 
   if (!document.body || !document.body.classList.contains('m-testtask-create')) return;
@@ -200,9 +199,12 @@
     if (!select || select.dataset.mkzMailto) return;
     select.dataset.mkzMailto = '1';
     const displayName = o => o.text.replace(/^[^:：]*[:：]/, '').trim();
+    let names = [];
+    try { names = JSON.parse(document.documentElement.dataset.mkzMailto || '[]'); } catch (_) { names = []; }
+    if (!names.length) return; // 没拿到名单（不在公司网络等）就不预填
     const values = new Set($()(select).val() || []);
     const missing = [];
-    DEFAULT_MAILTO.forEach(name => {
+    names.forEach(name => {
       const option = Array.from(select.options).find(o => o.value && displayName(o) === name);
       if (option) values.add(option.value);
       else missing.push(name);
@@ -216,7 +218,11 @@
     () => {
       try { lockProject(); } catch (e) { console.warn(LOG, '锁定项目失败', e); }
       try { addBuildButtons(); } catch (e) { console.warn(LOG, '添加版本按钮失败', e); }
-      try { addDefaultMailto(); } catch (e) { console.warn(LOG, '设置抄送失败', e); }
     }
+  );
+  // 抄送名单由隔离环境脚本异步写入 <html data-mkz-mailto>，单独等它
+  whenReady(
+    () => $() && document.getElementById('mailto_chosen') && document.documentElement.dataset.mkzMailto !== undefined,
+    () => { try { addDefaultMailto(); } catch (e) { console.warn(LOG, '设置抄送失败', e); } }
   );
 })();

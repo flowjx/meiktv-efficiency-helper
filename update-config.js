@@ -9,5 +9,7 @@ const UPDATE_CONFIG = {
   checkIntervalMinutes: 60,
   // 安装明细上报（server/install_server.py）。改地址时同步改 manifest.json 的 host_permissions。
   reportUrl: 'http://172.16.5.36:8790/api/ping',
+  // 分组和默认抄送名单（只存在上报服务的本地配置里，不进公开仓库）
+  teamConfigUrl: 'http://172.16.5.36:8790/api/team-config',
   reportIntervalMinutes: 60
 };

@@ -165,6 +165,11 @@ class Handler(BaseHTTPRequestHandler):
         url = urlparse(self.path)
         if url.path == "/health":
             return self._send(200, '{"ok":true}')
+        if url.path == "/api/team-config":
+            # 分组与默认抄送名单只放在本地配置（config.local.json 的 team），不进公开仓库；插件后台定时拉取
+            team = CFG.get("team") or {}
+            body = {"groups": team.get("groups") or {}, "mailto": team.get("mailto") or []}
+            return self._send(200, json.dumps(body, ensure_ascii=False))
         if url.path not in ("/", "/installs"):
             return self._send(404, "not found", "text/plain; charset=utf-8")
         key = (parse_qs(url.query).get("key") or [""])[0]

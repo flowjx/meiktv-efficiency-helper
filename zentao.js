@@ -5,7 +5,7 @@
 
   const LOG = '[禅道测试单助手]';
   const ROOT_ID = 'mkz-toolbar';
-  const CACHE_PREFIX = 'mkz-progress:';
+  const CACHE_PREFIX = 'mkz-progress2:'; // v2：多了 creator（历史第一条“创建”）
   const PREF_KEY = 'mkz-prefs';
   const CACHE_TTL = 30 * 60 * 1000; // 进度缓存 30 分钟
   const STALE_DAYS = 3; // 超过 N 天没有任何历史记录算"停滞"
@@ -119,8 +119,10 @@
       };
     });
     const comments = items.filter(i => i.comment).slice(-2).reverse();
+    const created = items.find(i => i.action === '创建') || items[0] || null;
+    const creator = created ? { who: created.who, date: created.date, time: created.time } : null;
     const last = items[items.length - 1] || null;
-    return { comments, last, fetchedAt: Date.now() };
+    return { comments, last, creator, fetchedAt: Date.now() };
   }
 
   async function fetchProgress(row, force) {
@@ -172,7 +174,25 @@
     return p.comments.map(c => `${shortDate(c.date)} ${c.time} ${c.who}：${c.comment}`).join('\n');
   }
 
+  // 提测人员列（原“所属产品”列）：创建人 + 分组 + 提测日期
+  function creatorName(row) { return row.progress?.creator?.who || ''; }
+
+  function renderCreator(row) {
+    const td = C.product >= 0 ? row.tr.cells[C.product] : null;
+    if (!td) return;
+    td.innerHTML = '';
+    td.removeAttribute('title');
+    const c = row.progress?.creator;
+    if (!row.progress) { td.appendChild(el('span', { class: 'mkz-muted', text: '…' })); return; }
+    if (!c) { td.appendChild(el('span', { class: 'mkz-muted', text: '-' })); return; }
+    const group = groupOf(row);
+    td.title = `${c.who}${group ? `（${group}）` : ''} 创建于 ${c.date} ${c.time}`;
+    td.append(el('div', { class: 'mkz-creator', text: c.who }),
+      el('div', { class: 'mkz-creator__meta', text: `${group ? `${group} · ` : ''}${shortDate(c.date)} 提测` }));
+  }
+
   function renderProgress(row) {
+    renderCreator(row);
     const td = row.progressTd;
     if (!td) return;
     td.innerHTML = '';
@@ -330,14 +350,13 @@
   // ---------- 表格改造 ----------
   function decorateTable() {
     const headRow = table.tHead.rows[0];
-    // 1) 产品/项目合并：隐藏"所属项目"列，不一致时在产品下方提示
-    if (C.project >= 0) {
-      headRow.cells[C.project].classList.add('mkz-hide');
-      const productTh = headRow.cells[C.product];
-      if (productTh && !productTh.dataset.mkz) {
-        productTh.dataset.mkz = '1';
-        productTh.querySelector('a')?.append('/项目');
-      }
+    // 1) “所属产品 / 所属项目”没什么用：隐藏项目列，产品列改为“提测人员”（取历史记录里的创建人）
+    if (C.project >= 0) headRow.cells[C.project].classList.add('mkz-hide');
+    const productTh = C.product >= 0 ? headRow.cells[C.product] : null;
+    if (productTh && !productTh.dataset.mkz) {
+      productTh.dataset.mkz = '1';
+      productTh.textContent = '提测人员';
+      productTh.title = '测试单的创建人（取自历史记录第一条“创建”）';
     }
     // 表格是 table-layout: fixed，没写宽度的列会平分剩余空间：给 ID/产品/版本定宽，剩下的留给进度列
     const markCol = (index, cls) => {
@@ -367,12 +386,8 @@
         refreshAfterModalClose(row);
       });
       tr.querySelector('a.iframe[href*="f=view"]')?.addEventListener('click', () => refreshAfterModalClose(row));
-      if (C.project >= 0) {
-        tr.cells[C.project].classList.add('mkz-hide');
-        if (row.project && row.project !== row.product) {
-          tr.cells[C.product].appendChild(el('div', { class: 'mkz-project-diff', title: '所属项目与产品不同', text: `项目：${row.project}` }));
-        }
-      }
+      if (C.project >= 0) tr.cells[C.project].classList.add('mkz-hide');
+      renderCreator(row);
       // 结束日期提示
       if (row.status !== 'done' && /^\d{4}-\d{2}-\d{2}$/.test(row.end)) {
         const diff = dayDiff(row.end, todayStr());
@@ -400,20 +415,36 @@
   }
 
   // ---------- 筛选状态 ----------
-  const prefs = Object.assign({ status: 'all', risk: '', owner: '', keyword: '', hideDone: false }, store.get(PREF_KEY) || {});
+  // 分组名单来自内网上报服务（background.js 拉取存到 chrome.storage.local.teamConfig），不写在代码里
+  let teamGroups = null; // { 组名: [成员] }
+  const memberGroup = new Map();
+  const normName = n => String(n || '').replace(/[（(].*?[）)]/g, '').replace(/-.*$/, '').trim();
+  function setTeamGroups(groups) {
+    teamGroups = groups && Object.keys(groups).length ? groups : null;
+    memberGroup.clear();
+    Object.entries(teamGroups || {}).forEach(([g, members]) => members.forEach(m => memberGroup.set(normName(m), g)));
+  }
+  function groupOf(row) {
+    const who = normName(creatorName(row));
+    if (!who) return '';
+    return memberGroup.get(who) || (teamGroups ? '其他' : '');
+  }
+
+  const prefs = Object.assign({ status: 'all', risk: '', owner: '', group: '', keyword: '', hideDone: false }, store.get(PREF_KEY) || {});
   const savePrefs = () => store.set(PREF_KEY, prefs);
 
   function matches(row) {
     if (prefs.status !== 'all' && row.status !== prefs.status) return false;
     if (prefs.hideDone && row.status === 'done') return false;
     if (prefs.owner && row.owner !== prefs.owner) return false;
+    if (prefs.group && groupOf(row) !== prefs.group) return false;
     if (prefs.risk === 'overdue' && !overdueDays(row)) return false;
     if (prefs.risk === 'soon' && !isDueSoon(row)) return false;
     if (prefs.risk === 'stale' && !isStale(row)) return false;
     if (prefs.risk === 'nonote' && (!row.progress || row.progress.error || row.progress.comments.length || row.status === 'done')) return false;
     const kw = prefs.keyword.trim().toLowerCase();
     if (kw) {
-      const hay = [row.rawId, row.name, row.product, row.project, row.build, row.owner, STATUS_TEXT[row.status], progressText(row)]
+      const hay = [row.rawId, row.name, row.build, row.owner, creatorName(row), groupOf(row), STATUS_TEXT[row.status], progressText(row)]
         .join(' ').toLowerCase();
       if (!kw.split(/\s+/).every(k => hay.includes(k))) return false;
     }
@@ -435,7 +466,8 @@
     if (count) count.textContent = `显示 ${shown} / ${rows.length}`;
     document.querySelectorAll('#mkz-toolbar [data-filter]').forEach(chip => {
       const [type, value] = chip.dataset.filter.split(':');
-      const active = type === 'status' ? prefs.status === value : type === 'risk' ? prefs.risk === value : prefs.owner === value;
+      const active = type === 'status' ? prefs.status === value : type === 'risk' ? prefs.risk === value
+        : type === 'group' ? prefs.group === value : prefs.owner === value;
       chip.classList.toggle('is-active', active);
     });
     const hideDone = document.getElementById('mkz-hide-done');
@@ -465,6 +497,7 @@
         const [type, value] = filter.split(':');
         if (type === 'status') prefs.status = prefs.status === value ? 'all' : value;
         else if (type === 'risk') prefs.risk = prefs.risk === value ? '' : value;
+        else if (type === 'group') prefs.group = prefs.group === value ? '' : value;
         else prefs.owner = prefs.owner === value ? '' : value;
         savePrefs();
         applyFilters();
@@ -505,19 +538,32 @@
       ownerGroup.appendChild(c);
     });
 
-    box.append(statusGroup, riskGroup, ownerGroup);
+    // 提测分组（按提测人员所在组）
+    const groupRow = el('div', { class: 'mkz-group mkz-group--wrap' }, [el('span', { class: 'mkz-group__title', text: '提测分组（未完成/总数）' })]);
+    if (!teamGroups) {
+      groupRow.appendChild(el('span', { class: 'mkz-muted', text: '分组名单未加载（需在公司内网，且上报服务在运行）' }));
+    } else {
+      [...Object.keys(teamGroups), '其他'].forEach(g => {
+        const list = rows.filter(r => groupOf(r) === g);
+        if (g === '其他' && !list.length) return;
+        groupRow.appendChild(chip(g, progressLoaded ? `${list.filter(r => r.status !== 'done').length}/${list.length}` : '…', `group:${g}`));
+      });
+    }
+
+    box.append(statusGroup, riskGroup, groupRow, ownerGroup);
     applyFilters();
   }
 
   // ---------- 导出 / 摘要 ----------
   function exportCsv() {
-    const header = ['ID', '名称', '所属产品', '所属项目', '版本', '负责人', '开始日期', '结束日期', '状态', '逾期天数', '最新备注', '上一条备注', '最后更新'];
+    const header = ['ID', '名称', '提测人员', '提测分组', '提测时间', '版本', '负责人', '开始日期', '结束日期', '状态', '逾期天数', '最新备注', '上一条备注', '最后更新'];
     const esc = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
     const lines = visibleRows().map(r => {
       const c = r.progress?.comments || [];
       const fmt = x => (x ? `${x.date} ${x.time} ${x.who}：${x.comment}` : '');
       const last = r.progress?.last;
-      return [r.rawId, r.name, r.product, r.project, r.build, r.owner, r.begin, r.end, STATUS_TEXT[r.status],
+      const cr = r.progress?.creator;
+      return [r.rawId, r.name, cr?.who || '', groupOf(r), cr ? `${cr.date} ${cr.time}` : '', r.build, r.owner, r.begin, r.end, STATUS_TEXT[r.status],
         overdueDays(r) || '', fmt(c[0]), fmt(c[1]), last ? `${last.date} ${last.time} ${last.who} ${last.action}` : ''].map(esc).join(',');
     });
     const csv = [header.map(esc).join(','), ...lines].join('\r\n');
@@ -603,7 +649,7 @@
         el('label', { class: 'mkz-check' }, [hideDone, ' 隐藏已完成']),
         el('span', { id: 'mkz-count', class: 'mkz-count' }),
         el('button', { type: 'button', class: 'btn btn-sm', text: '清空筛选', onclick: () => {
-          Object.assign(prefs, { status: 'all', risk: '', owner: '', keyword: '', hideDone: false });
+          Object.assign(prefs, { status: 'all', risk: '', owner: '', group: '', keyword: '', hideDone: false });
           search.value = '';
           savePrefs();
           applyFilters();
@@ -630,7 +676,22 @@
   }
 
   // ---------- 启动 ----------
+  async function loadTeamConfig() {
+    try {
+      const { teamConfig } = await chrome.storage.local.get('teamConfig');
+      setTeamGroups(teamConfig?.groups);
+      // 后台顺便刷新一次名单，拿到新的就重绘
+      chrome.runtime.sendMessage({ type: 'meiktv-team-config' }).then(fresh => {
+        if (!fresh || JSON.stringify(fresh.groups) === JSON.stringify(teamGroups)) return;
+        setTeamGroups(fresh.groups);
+        rows.forEach(renderCreator);
+        renderStats();
+      }).catch(() => {});
+    } catch (_) { /* 拿不到就不显示分组 */ }
+  }
+
   async function init() {
+    await loadTeamConfig();
     buildToolbar();
     try {
       if (await loadAllPages()) console.info(LOG, '已加载全部分页');

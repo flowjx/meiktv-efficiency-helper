@@ -8,5 +8,20 @@
   },
   "listen_host": "0.0.0.0",
   "listen_port": 8790,
-  "admin_key": ""
+  "admin_key": "",
+  "team": {
+    "groups": {
+      "示例组A": [
+        "张三",
+        "李四"
+      ],
+      "示例组B": [
+        "王五"
+      ]
+    },
+    "mailto": [
+      "张三",
+      "王五"
+    ]
+  }
 }

@@ -28,9 +28,10 @@ Chrome/Edge **Manifest V3 内容脚本插件**，给魅KTV 内部后台加"批�
 | `update-config.js` | 仓库地址、分支、检查间隔。**换仓库只改这里**（background 和 popup 共用） |
 | `popup.html/js/css` | 点击工具栏图标的弹窗：当前/最新版本、更新内容、更新步骤、"立即检查"、"重新加载插件"（`chrome.runtime.reload()`，会从磁盘重新读取已解压的插件） |
 | `update-notice.js` | 注入所有业务页面（排在各 content script 前面）：有新版且用户没点过"知道了"时，在顶层页面左下角提示一次 |
-| `zentao-sign.js` | 禅道“提交测试”（`body.m-testtask-create`）和“编辑测试单”（`m-testtask-edit`）页：名称加/锁【姓名】签名。真正的 `name` 输入框改成 hidden，旁边放只填内容的输入框（`required`），输入时实时写回“签名+内容”，与禅道提交方式无关。编辑页只锁已有签名、保留原签名人；无签名不处理。2026-11-16 在两个页面上模拟验证（未保存） |
+| `zentao-sign.js` | 提交测试页（`m-testtask-create`）：“负责人”文案改“测试负责人”；把 teamConfig.mailto 写到 `<html data-mkz-mailto>` 给页面环境脚本用。编辑页（`m-testtask-edit`）：名称以【某人】开头的历史数据锁定签名（真正 `name` 改 hidden + 只填内容的输入框）。2026-11-16 起**不再**在提交时自动加【当前用户】签名（用户要求去掉，提测人改看列表“提测人员”列） |
 | `zentao-list-main.js` | **world: MAIN**，测试单列表页：给插件替换进来的行重新绑定禅道原生弹窗（modalTrigger） |
-| `zentao-create-main.js` | **`world: "MAIN"`** 的 content script（要操作禅道页面里的 jQuery/chosen，隔离环境做不到；也因此不能用 chrome.* API）。只在 `body.m-testtask-create`：项目选 136 并 `trigger('change')` 走禅道 `loadProjectRelated` 刷版本，再 disabled + 同名 hidden 提交；`#buildBox` 外加“新建版本”/“刷新”（`loadProjectBuilds(136)`）。新建版本是本页弹窗：GET `m=build&f=create&project=136&onlybody=yes` 取原生表单默认值（product=90、builder=当前用户、date=今天），只替换 name/date/desc 后 POST 回同一地址，再刷新版本下拉并按名称选中，选中成功才算创建成功（重名在前端先拦截）。**注意禅道成功时也会 `alert('保存成功')`**，所以成败一律以结果（版本列表 / 历史记录）为准，结果找不到时才把 alert 文字当失败原因（2026-11-16 用户实测踩到，已修，跟进提交同样处理）；抄送按**显示名**匹配 `DEFAULT_MAILTO`（不写账号，避免手机号进公开仓库）。用户给的“刘守通/丁萍华”在禅道里是“刘守铜/丁萍花”。2026-11-16 页面验证：项目提交值 136、抄送 6 人、刷新正常；新建版本弹窗用拦截 POST 的方式验证过提交数据，未真实创建 |
+| `zentao-create-main.js` | **`world: "MAIN"`** 的 content script（要操作禅道页面里的 jQuery/chosen，隔离环境做不到；也因此不能用 chrome.* API）。只在 `body.m-testtask-create`：项目选 136 并 `trigger('change')` 走禅道 `loadProjectRelated` 刷版本，再 disabled + 同名 hidden 提交；`#buildBox` 外加“新建版本”/“刷新”（`loadProjectBuilds(136)`）。新建版本是本页弹窗：GET `m=build&f=create&project=136&onlybody=yes` 取原生表单默认值（product=90、builder=当前用户、date=今天），只替换 name/date/desc 后 POST 回同一地址，再刷新版本下拉并按名称选中，选中成功才算创建成功（重名在前端先拦截）。**注意禅道成功时也会 `alert('保存成功')`**，所以成败一律以结果（版本列表 / 历史记录）为准，结果找不到时才把 alert 文字当失败原因（2026-11-16 用户实测踩到，已修，跟进提交同样处理）；抄送名单**不在代码里**：`zentao-sign.js`（隔离环境）从 `chrome.storage.local.teamConfig.mailto` 读出写到 `<html data-mkz-mailto>`，本脚本等它出现后按禅道**显示名**（去掉“X:”前缀）匹配选中；用户口头给的名字可能和禅道不一致，以禅道为准。2026-11-16 页面验证：项目提交值 136、抄送 6 人、刷新正常；新建版本弹窗用拦截 POST 的方式验证过提交数据，未真实创建 |
+| 分组/抄送名单 | **不在仓库里**：`server/config.local.json` 的 `team.groups`（组名→成员姓名）、`team.mailto`；服务 `GET /api/team-config` 返回，background.js 的 `fetchTeamConfig()` 在安装/启动/每小时拉取，存 `chrome.storage.local.teamConfig`。成员名匹配时去掉括号备注和“-xxx”后缀（如“张三-小名”→“张三”、“张三(昵称)”→“张三”） |
 | `identity.js` | 只注入 bug.meiktv.com 顶层页面：读右上角 `#userNav .user-name`，每天最多拉一次 `m=my&f=profile` 取部门/职位，发给 background 上报。**不取用户名（是手机号）** |
 | `server/install_server.py` | 安装明细上报服务：`POST /api/ping` 写 MySQL 表 `helper_install`（自动建表，按 client_id upsert），`GET /installs?key=` 明细页。配置在 `server/config.local.json`（gitignore，含数据库密码，绝不提交），模板 `config.example.json` |
 | `version.json` | 线上最新版本信息（`version/date/notes/download/history`），插件读的就是 GitHub 上这个文件 |
@@ -55,10 +56,11 @@ Chrome/Edge **Manifest V3 内容脚本插件**，给魅KTV 内部后台加"批�
 - 站点是禅道旧版（12.x 风格，GET 参数路由 `index.php?m=&f=`，无 iframe 外壳）。需要用户自己登录，插件复用登录态。
 - 只在 `body.m-testtask-browse` 且存在 `#taskList` 时生效；列按**表头文字**定位（ID/名称/所属产品/所属项目/版本/负责人/开始日期/结束日期/状态），禅道改列名或用户自定义列后要同步改 `C` 映射。
 - 加载全部：读 `.pager[data-link-creator]`，把 `{recPerPage}` 换成总数、`{page}` 换成 1 重新拉列表并替换 tbody（总数 > 1000 不做）。替换后的行没有禅道原生弹窗绑定：`zentao-list-main.js`（world: MAIN）监听 `#taskList`，给没有 `zui.modaltrigger` 数据的 `a.iframe` 调 `$(a).modalTrigger({type:'iframe'})`，参数已核对与原生完全一致。双击行 = `a.iframe[href*="f=view"].click()`，即禅道原生概况弹窗；`refreshAfterModalClose()` 轮询 `#triggerModal.in` 由有到无后刷新该行进度。（用户明确要求与操作区“概况”效果一致，不要自制弹窗。）
+- 提测人员 / 提测分组（2026-11-16）：原“所属产品”列改为“提测人员”，取历史第一条“创建”的人（`parseHistory()` 的 `creator`，缓存键升到 `mkz-progress2:`）；分组 = teamConfig.groups 里该成员所在组，名单外归“其他”，统计栏“提测分组”可筛选，搜索/CSV 也含提测人和分组。
 - 进度：对每行的"概况"链接（`m=testtask&f=view&taskID=N&onlybody=yes`）并发 4 个请求，解析 `#actionbox .histories-list > li`：头部文字形如 `2026-11-13 17:50:40, 由 <strong>张三</strong> 编辑。`，备注在 `.article-content.comment`。缓存在页面 localStorage `mkz-progress:<id>`，30 分钟过期；筛选偏好存 `mkz-prefs`。
 - **跟进（2026-11-16 新增）**：进度列的“跟进”按钮 → 弹窗写备注 → `submitFollowUp()`：GET 该行“编辑”链接（加 `onlybody=yes`）拿到编辑表单，**原样带回全部字段**（含 desc、mailto 多选），只设置 `comment`（纯文本转义、换行转 `<br />`），POST 回同一地址；成功时禅道返回 `parent.location=...view...` 脚本，失败通常是 `alert(...)`。最后强制刷新该行历史，最新备注等于提交内容才算成功。
   - 为什么不用 `m=action&f=comment`：本站禅道该方法对账号返回 `user-deny`（无权限）。
-  - 已在 #111 真实验证（2026-11-16 16:23 蒋晓华 “【效率助手】跟进功能测试，请忽略”）：提交前后编辑表单全部字段无差异。
+  - 已在 #111 真实验证（2026-11-16 16:23 维护者账号 “【效率助手】跟进功能测试，请忽略”）：提交前后编辑表单全部字段无差异。
   - 自己写的备注在详情页 li 里会多一个“修改备注”编辑框，文本出现两次；解析只取第一个 `.comment`，不受影响。
 - **复制归档SQL（2026-11-16 新增）**：`copyArchiveSql()` 取当前可见行中 `status === 'done'` 的，生成 `UPDATE \`meiktv_bug\`.\`meiktv_testtask\` SET \`product\` = 91 WHERE \`id\` = N;`（`ARCHIVE_PRODUCT_ID = 91` 是归档用的产品，id 去掉前导 0），首行是带日期和单号的注释。插件不执行 SQL。
 - "N 天无更新"按历史记录最后一条日期算，阈值 `STALE_DAYS = 3`。
@@ -122,3 +124,8 @@ Chrome/Edge **Manifest V3 内容脚本插件**，给魅KTV 内部后台加"批�
 - 新增页面支持：在 `manifest.json` 的 `matches` 和 `host_permissions` 里都加上，再在 `content.js` 加对应的 `isXxxPage()` 和按钮锚点逻辑。
 - 新增的 DOM id/类名沿用 `meiktv-` 前缀，避免和后台页面冲突。
 - 不要在插件里写死 token/Cookie，也不要把门店/素材数据存进插件。
+
+## 9. 隐私注意（2026-11-16 补记）
+
+- 仓库是**公开**的。2.3.5 及更早的提交里，`zentao-create-main.js`、README、HANDOFF 曾写入过 6 位同事姓名（默认抄送名单）和一条维护者姓名，之后已移除，但**仍留在 git 历史里**。如需彻底清除，需要改写历史并强推（会影响已 clone 的同事，需他们重新 clone），未经用户同意不要做。
+- 今后同事姓名、分组只放 `server/config.local.json`。
