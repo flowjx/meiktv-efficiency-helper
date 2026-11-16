@@ -258,3 +258,12 @@
 .mkz-follow__status { min-height: 18px; margin-top: 6px; font-size: 12px; color: #646a73; }
 .mkz-follow__status.is-error { color: #e5484d; }
 .mkz-follow__actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+
+/* 测试单名称签名（zentao-sign.js） */
+.mkz-sign-group .mkz-sign-addon {
+  background: #fdf0f4;
+  color: #e8336d;
+  font-weight: bold;
+  cursor: not-allowed;
+  user-select: none;
+}

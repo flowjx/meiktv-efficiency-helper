@@ -28,6 +28,7 @@ Chrome/Edge **Manifest V3 内容脚本插件**，给魅KTV 内部后台加"批�
 | `update-config.js` | 仓库地址、分支、检查间隔。**换仓库只改这里**（background 和 popup 共用） |
 | `popup.html/js/css` | 点击工具栏图标的弹窗：当前/最新版本、更新内容、更新步骤、"立即检查"、"重新加载插件"（`chrome.runtime.reload()`，会从磁盘重新读取已解压的插件） |
 | `update-notice.js` | 注入所有业务页面（排在各 content script 前面）：有新版且用户没点过"知道了"时，在顶层页面左下角提示一次 |
+| `zentao-sign.js` | 禅道“提交测试”（`body.m-testtask-create`）和“编辑测试单”（`m-testtask-edit`）页：名称加/锁【姓名】签名。真正的 `name` 输入框改成 hidden，旁边放只填内容的输入框（`required`），输入时实时写回“签名+内容”，与禅道提交方式无关。编辑页只锁已有签名、保留原签名人；无签名不处理。2026-11-16 在两个页面上模拟验证（未保存） |
 | `identity.js` | 只注入 bug.meiktv.com 顶层页面：读右上角 `#userNav .user-name`，每天最多拉一次 `m=my&f=profile` 取部门/职位，发给 background 上报。**不取用户名（是手机号）** |
 | `server/install_server.py` | 安装明细上报服务：`POST /api/ping` 写 MySQL 表 `helper_install`（自动建表，按 client_id upsert），`GET /installs?key=` 明细页。配置在 `server/config.local.json`（gitignore，含数据库密码，绝不提交），模板 `config.example.json` |
 | `version.json` | 线上最新版本信息（`version/date/notes/download/history`），插件读的就是 GitHub 上这个文件 |
