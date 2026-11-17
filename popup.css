@@ -89,3 +89,15 @@ footer a { color: #2e7fff; }
   color: #8f959e;
   font-size: 12px;
 }
+
+.auto-update {
+  margin-top: 10px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.auto-update.is-on { background: #e8f7ef; color: #1f8a55; }
+.auto-update.is-off { background: #f5f7fa; color: #646a73; }
+.auto-update.is-warn { background: #fff4e0; color: #b86e00; }

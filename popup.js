@@ -41,6 +41,24 @@
 
   chrome.storage.local.get('update').then(({ update }) => render(update));
 
+  // 自动更新状态：读 updater 写在插件目录里的 updater/status.json（没有这个文件 = 还没开启）
+  fetch(`${chrome.runtime.getURL('updater/status.json')}?t=${Date.now()}`, { cache: 'no-store' })
+    .then(res => (res.ok ? res.json() : null))
+    .catch(() => null)
+    .then(status => {
+      const box = $('auto-update');
+      if (!status) {
+        box.className = 'auto-update is-off';
+        box.textContent = '自动更新：未开启。在插件目录双击“安装自动更新.bat”即可开启，以后无需手动更新。';
+        return;
+      }
+      const last = new Date(String(status.lastRun).replace(' ', 'T'));
+      const stale = Number.isFinite(last.getTime()) && Date.now() - last.getTime() > 3 * 3600 * 1000;
+      box.className = `auto-update ${stale || status.result === 'error' ? 'is-warn' : 'is-on'}`;
+      box.textContent = `自动更新：已开启 · 上次 ${status.lastRun}：${status.message}`
+        + (stale ? '（超过 3 小时没有运行，可能已被关闭）' : '');
+    });
+
   $('check').addEventListener('click', () => {
     $('state').className = 'state';
     $('state').textContent = '检查中…';

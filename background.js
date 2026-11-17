@@ -144,15 +144,38 @@ async function onIdentity(identity) {
   await report(changed);
 }
 
-chrome.runtime.onInstalled.addListener(() => {
+// ---------- 自动更新配合：磁盘上的文件被 updater 换成新版后，自动重新加载 ----------
+// 已解压安装的插件读取的是磁盘上的实时文件：比较磁盘 manifest.json 与正在运行的版本，磁盘更新就 reload。
+// updater 会最后才覆盖 manifest.json，所以版本号变了说明其他文件已经复制完。
+const DISK_ALARM = 'meiktv-disk-check';
+
+async function checkDiskVersion() {
+  try {
+    const res = await fetch(`${chrome.runtime.getURL('manifest.json')}?t=${Date.now()}`, { cache: 'no-store' });
+    const disk = (await res.json()).version;
+    const running = chrome.runtime.getManifest().version;
+    if (compareVersion(disk, running) > 0) {
+      console.info(`[效率助手] 磁盘上已是 ${disk}（运行中 ${running}），自动重新加载`);
+      chrome.runtime.reload();
+    }
+  } catch (_) { /* 读不到就下次再看 */ }
+}
+
+function ensureAlarms() {
   chrome.alarms.create(ALARM, { periodInMinutes: UPDATE_CONFIG.checkIntervalMinutes });
+  chrome.alarms.create(DISK_ALARM, { periodInMinutes: 5 });
+}
+
+chrome.runtime.onInstalled.addListener(() => {
+  ensureAlarms();
   checkUpdate();
   report(true);
   fetchTeamConfig();
 });
 
 chrome.runtime.onStartup.addListener(() => {
-  chrome.alarms.create(ALARM, { periodInMinutes: UPDATE_CONFIG.checkIntervalMinutes });
+  ensureAlarms();
+  checkDiskVersion();
   checkUpdate();
   report(false);
   fetchTeamConfig();
@@ -163,6 +186,8 @@ chrome.alarms.onAlarm.addListener(alarm => {
     checkUpdate();
     report(false);
     fetchTeamConfig();
+  } else if (alarm.name === DISK_ALARM) {
+    checkDiskVersion();
   }
 });
 

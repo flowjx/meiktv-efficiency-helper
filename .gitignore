@@ -8,3 +8,6 @@ __pycache__/
 Thumbs.db
 server/config.local.json
 server/server.log
+updater/update.log
+updater/update.log.1
+updater/status.json

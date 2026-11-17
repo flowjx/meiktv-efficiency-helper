@@ -45,6 +45,10 @@ Chrome/Edge **Manifest V3** 插件（以“加载已解压的扩展程序”方�
 | `zentao-create-main.js` | MAIN 环境：提交测试页的项目锁定、新建版本弹窗、默认抄送（操作禅道 jQuery/chosen 必须在页面环境；MAIN 环境不能用 chrome.* API） |
 | `zentao-sign.js` | 隔离环境：提交测试页改“测试负责人”文案、admin 拦截、把抄送名单写到 `<html data-mkz-mailto>` 给 MAIN 脚本；编辑页锁定历史签名 |
 | `version.json` | 最新版本信息 `version/date/notes/download/history`，插件读 GitHub 上的这个文件 |
+| `updater/auto-update.ps1` | 自动更新脚本（UTF-8 **带 BOM**，PS 5.1 才能正确读中文）：读本地 manifest 版本 → 查最新（先 GitHub，失败走内网；地址从 `update-config.js` 正则读出）→ git 仓库只在工作区干净时 `git pull --ff-only`，否则下载 zip、校验 zip 内版本、robocopy 覆盖（**manifest.json 最后复制**）。写 `updater/status.json`、`updater/update.log`（均 gitignore）。参数 `-ForceIntranet`、`-DryRun` 用于测试 |
+| `updater/install-updater.ps1` | 注册/删除当前用户的计划任务 `MeiktvHelperAutoUpdate`（每小时 + 登录时；登录触发器建不了就只用每小时），动作 `wscript run-hidden.vbs`。`-Uninstall`、`-DryRun` |
+| `updater/run-hidden.vbs` | 隐藏窗口启动 auto-update.ps1；**只用 ASCII**，路径运行时从自身位置推出（插件路径可能含中文） |
+| `安装自动更新.bat` / `卸载自动更新.bat` | 插件根目录，双击调用 install-updater.ps1 |
 | `scripts/bump_version.py` | 发版：同时改 manifest.json 和 version.json（版本号必须递增） |
 | `scripts/make_icon.py` | 生成 `icons/`（玫红→紫渐变圆角方 + 白闪电 + 小黄星，16px 无星） |
 | `meiktv-logo-transparent.png` | 品牌原 logo，仅作素材，插件不用 |
@@ -106,6 +110,7 @@ Chrome/Edge **Manifest V3** 插件（以“加载已解压的扩展程序”方�
 ## 5. 在线更新与发版
 
 - 已解压安装的插件不会被浏览器自动更新，只做“检查 + 提醒 + 一键重新加载”。MV3 禁止远程代码，不要尝试远程拉 js。
+- **静默自动更新（2026-11-17，方案 A）**：同事在插件目录双击“安装自动更新.bat”后，计划任务每小时跑 `updater/auto-update.ps1` 覆盖文件；`background.js` 每 5 分钟（alarm `meiktv-disk-check`）+ 浏览器启动时 `checkDiskVersion()`：fetch `chrome.runtime.getURL('manifest.json')`（已解压插件读的是磁盘实时文件），比运行中版本新就 `chrome.runtime.reload()`。弹窗读 `updater/status.json` 显示“自动更新：已开启/未开启/超过 3 小时没运行”。已实测：2.3.5 副本经 GitHub、经内网（`-ForceIntranet`）都更新到 2.3.6；干净 git 克隆 pull 成功、有改动的 git 克隆跳过；再次运行显示已最新；`checkDiskVersion` 用 node 模拟过。**未实测**：真实浏览器里磁盘版本变化后是否自动 reload、计划任务真实注册（只跑过 `-DryRun`）。维护者自己的开发目录不要装（有改动会跳过，但没必要）。
 - 检查：每 60 分钟 + 浏览器启动 + 弹窗“立即检查”。先 GitHub raw（8 秒超时，约 5 分钟 CDN 缓存），失败走内网；`update.source` 记录来源，内网时下载链接换内网 zip。2.3.6 之前的版本没有内网兜底。
 - **发版流程**：
   ```bash
