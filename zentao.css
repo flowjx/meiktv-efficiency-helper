@@ -314,3 +314,22 @@
   font-size: 14px;
   font-weight: bold;
 }
+
+/* 进入页面提醒：我的测试单超过 2 天未更新（叠在禅道概况弹窗、跟进弹窗下面） */
+.mkz-remind { z-index: 1030; }
+.mkz-remind__card { width: 600px; }
+.mkz-remind__desc { margin-bottom: 8px; color: #3c4353; }
+.mkz-remind__list { max-height: 50vh; margin: 0; padding: 0; overflow: auto; list-style: none; }
+.mkz-remind__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: #fff4e0;
+}
+.mkz-remind__item + .mkz-remind__item { margin-top: 6px; }
+.mkz-remind__main { flex: 1; min-width: 0; }
+.mkz-remind__name { font-weight: bold; color: #1f2329; }
+.mkz-remind__name:hover { color: #2e7fff; }
+.mkz-remind__meta { margin-top: 2px; color: #b86e00; font-size: 12px; }

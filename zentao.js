@@ -10,6 +10,7 @@
   const CACHE_TTL = 30 * 60 * 1000; // 进度缓存 30 分钟
   const STALE_DAYS = 3; // 超过 N 天没有任何历史记录算"停滞"
   const CONCURRENCY = 4;
+  const REMIND_HOURS = 48; // 进入列表页时提醒：自己的未完成测试单超过 N 小时没有任何更新
 
   const STATUS_TEXT = { wait: '未开始', doing: '进行中', blocked: '被阻塞', done: '已完成' };
   const STATUS_ORDER = ['doing', 'wait', 'blocked', 'done'];
@@ -156,6 +157,73 @@
     setInfo(`进度已更新（缓存 ${CACHE_TTL / 60000} 分钟）`);
     renderStats();
     applyFilters();
+    if (!force) showStaleReminder();
+  }
+
+  // ---------- 进入页面提醒：我的测试单超过 2 天没有更新 ----------
+  // “我的”= 当前登录人是提测人员（创建人）或负责人；“更新”= 详情页历史里的任何一条记录（备注、编辑、状态变更等）。
+  function currentUserName() {
+    return norm(document.querySelector('#userNav .user-name')?.textContent);
+  }
+
+  function hoursSinceUpdate(row) {
+    const last = row.progress?.last;
+    if (!last || !last.date) return null;
+    const t = Date.parse(`${last.date}T${last.time || '00:00'}:00`);
+    return Number.isFinite(t) ? (Date.now() - t) / 3600000 : null;
+  }
+
+  function myStaleRows() {
+    const me = currentUserName();
+    if (!me) return [];
+    return rows.filter(r => {
+      if (r.status === 'done' || !r.progress || r.progress.error) return false;
+      if (creatorName(r) !== me && r.owner !== me) return false;
+      const h = hoursSinceUpdate(r);
+      return h !== null && h > REMIND_HOURS;
+    }).sort((a, b) => hoursSinceUpdate(b) - hoursSinceUpdate(a));
+  }
+
+  function showStaleReminder() {
+    document.getElementById('mkz-remind')?.remove();
+    const list = myStaleRows();
+    if (!list.length) return;
+    const ul = el('ul', { class: 'mkz-remind__list' });
+    const close = () => overlay.remove();
+    const renderList = () => {
+      ul.innerHTML = '';
+      const left = list.filter(r => (hoursSinceUpdate(r) || 0) > REMIND_HOURS);
+      if (!left.length) { close(); setInfo('需要更新进度的测试单都已跟进'); return; }
+      left.forEach(r => {
+        const last = r.progress.last;
+        const days = Math.floor(hoursSinceUpdate(r) / 24);
+        ul.appendChild(el('li', { class: 'mkz-remind__item' }, [
+          el('div', { class: 'mkz-remind__main' }, [
+            el('a', {
+              href: 'javascript:;', class: 'mkz-remind__name', title: '打开概况',
+              text: `#${r.rawId} ${r.name}`,
+              onclick: () => { r.tr.querySelector('a.iframe[href*="f=view"]')?.click(); }
+            }),
+            el('div', { class: 'mkz-remind__meta', text: `${STATUS_TEXT[r.status]} · 最后更新 ${shortDate(last.date)} ${last.time} ${last.who} ${last.action}（${days} 天前）` })
+          ]),
+          el('button', { type: 'button', class: 'mkz-follow-btn', text: '跟进', onclick: () => openFollowDialog(r, renderList) })
+        ]));
+      });
+    };
+    const me = currentUserName();
+    const overlay = el('div', { id: 'mkz-remind', class: 'mkz-follow mkz-remind' }, [
+      el('div', { class: 'mkz-follow__card mkz-remind__card' }, [
+        el('div', { class: 'mkz-follow__title', text: `${me}，你好` }),
+        el('div', { class: 'mkz-remind__desc', text: `测试单需要 2 天内更新进度，如下测试单需要更新进度：` }),
+        ul,
+        el('div', { class: 'mkz-follow__actions' }, [
+          el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: '知道了', onclick: close })
+        ])
+      ])
+    ]);
+    overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+    renderList();
+    document.body.appendChild(overlay);
   }
 
   function staleDays(row) {
@@ -296,7 +364,7 @@
     throw new Error(alertMsg ? alertMsg.replace(/\\n/g, ' ').slice(0, 200) : '提交后没在历史记录里找到这条备注，请到禅道详情页确认');
   }
 
-  function openFollowDialog(row) {
+  function openFollowDialog(row, onDone) {
     document.getElementById('mkz-follow')?.remove();
     const textarea = el('textarea', { class: 'mkz-follow__input', placeholder: '写跟进内容，如：冒烟测试通过，待回归支付流程（Ctrl+Enter 提交）' });
     const status = el('div', { class: 'mkz-follow__status' });
@@ -331,6 +399,7 @@
         renderStats();
         setInfo(`#${row.rawId} 跟进已提交`);
         close();
+        if (onDone) onDone(row);
       } catch (e) {
         status.className = 'mkz-follow__status is-error';
         status.textContent = `提交失败：${e.message || e}`;
