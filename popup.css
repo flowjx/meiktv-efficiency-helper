@@ -115,5 +115,4 @@ footer a { color: #2e7fff; }
 }
 
 .au-guide .steps { margin: 6px 0 6px; }
-.au-guide .steps button { display: block; margin-top: 4px; font-size: 12px; }
-.au-tip { color: #8f959e; }
+.au-guide .steps a { color: #2e7fff; margin-left: 4px; }

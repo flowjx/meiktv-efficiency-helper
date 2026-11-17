@@ -49,7 +49,7 @@
       const box = $('auto-update');
       if (!status) {
         box.className = 'auto-update is-off';
-        box.textContent = '自动更新：未开启。按下面 3 步开启，以后无需手动更新。';
+        box.textContent = '自动更新：未开启';
         $('au-guide').open = true;
         return;
       }
@@ -57,12 +57,13 @@
       const stale = Number.isFinite(last.getTime()) && Date.now() - last.getTime() > 3 * 3600 * 1000;
       box.className = `auto-update ${stale || status.result === 'error' ? 'is-warn' : 'is-on'}`;
       box.textContent = `自动更新：已开启 · 上次 ${status.lastRun}：${status.message}`
-        + (stale ? '（超过 3 小时没有运行，可能已被关闭，可按下面步骤重新开启）' : '');
+        + (stale ? '（超过 3 小时没有运行，可能已被关闭）' : '');
       if (stale) $('au-guide').open = true;
     });
 
   // 打开本插件的详情页（能看到插件目录路径）；Edge 用 edge://，Chrome 用 chrome://
-  $('open-details').addEventListener('click', () => {
+  $('open-details').addEventListener('click', e => {
+    e.preventDefault();
     const scheme = /Edg\//.test(navigator.userAgent) ? 'edge' : 'chrome';
     chrome.tabs.create({ url: `${scheme}://extensions/?id=${chrome.runtime.id}` });
     window.close();
