@@ -64,7 +64,8 @@
       $('state').textContent = '尚未检查';
       return;
     }
-    $('latest').textContent = info.latest || '-';
+    // 远端比当前旧（如 GitHub 缓存还没刷新、或自己是开发目录）时，最新版本就是当前版本
+    $('latest').textContent = info.latest ? (compareVersion(info.latest, current) < 0 ? current : info.latest) : '-';
     $('checked-at').textContent = info.checkedAt ? `上次检查 ${new Date(info.checkedAt).toLocaleString('zh-CN', { hour12: false })}` : '';
 
     const state = $('state');
