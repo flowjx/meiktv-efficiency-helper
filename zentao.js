@@ -8,9 +8,8 @@
   const CACHE_PREFIX = 'mkz-progress2:'; // v2：多了 creator（历史第一条“创建”）
   const PREF_KEY = 'mkz-prefs';
   const CACHE_TTL = 30 * 60 * 1000; // 进度缓存 30 分钟
-  const STALE_DAYS = 3; // 超过 N 天没有任何历史记录算"停滞"
+  const STALE_HOURS = 48; // 未完成测试单超过 N 小时没有写备注（进度）算"停滞"：风险筛选、进度列标签、进入页面提醒共用
   const CONCURRENCY = 4;
-  const REMIND_HOURS = 48; // 进入列表页时提醒：自己的未完成测试单超过 N 小时没有任何更新
 
   const STATUS_TEXT = { wait: '未开始', doing: '进行中', blocked: '被阻塞', done: '已完成' };
   const STATUS_ORDER = ['doing', 'wait', 'blocked', 'done'];
@@ -161,27 +160,38 @@
   }
 
   // ---------- 进入页面提醒：我的测试单超过 2 天没有更新 ----------
-  // “我的”= 当前登录人是这张测试单的负责人；“更新”= 详情页历史里的任何一条记录（备注、编辑、状态变更等）。
+  // “我的”= 当前登录人是这张测试单的负责人；“更新进度”= 写了备注（只改负责人、日期等字段不算），从没写过备注的从创建时间算。
   function currentUserName() {
     return norm(document.querySelector('#userNav .user-name')?.textContent);
   }
 
+  // 最近一次进度：最新一条备注；没有备注就用创建记录
+  function lastProgress(row) {
+    const p = row.progress;
+    if (!p || p.error) return null;
+    if (p.comments && p.comments[0]) return { ...p.comments[0], kind: 'comment' };
+    if (p.creator && p.creator.date) return { ...p.creator, kind: 'created' };
+    return null;
+  }
+
   function hoursSinceUpdate(row) {
-    const last = row.progress?.last;
+    const last = lastProgress(row);
     if (!last || !last.date) return null;
     const t = Date.parse(`${last.date}T${last.time || '00:00'}:00`);
     return Number.isFinite(t) ? (Date.now() - t) / 3600000 : null;
   }
 
+  function lastProgressText(row) {
+    const last = lastProgress(row);
+    if (!last) return '';
+    const when = `${shortDate(last.date)} ${last.time}`;
+    return last.kind === 'comment' ? `最后备注 ${when} ${last.who}` : `从未写过备注 · ${when} ${last.who} 创建`;
+  }
+
   function myStaleRows() {
     const me = currentUserName();
     if (!me) return [];
-    return rows.filter(r => {
-      if (r.status === 'done' || !r.progress || r.progress.error) return false;
-      if (r.owner !== me) return false;
-      const h = hoursSinceUpdate(r);
-      return h !== null && h > REMIND_HOURS;
-    }).sort((a, b) => hoursSinceUpdate(b) - hoursSinceUpdate(a));
+    return rows.filter(r => r.owner === me && isStale(r)).sort((a, b) => hoursSinceUpdate(b) - hoursSinceUpdate(a));
   }
 
   function showStaleReminder() {
@@ -192,11 +202,9 @@
     const close = () => overlay.remove();
     const renderList = () => {
       ul.innerHTML = '';
-      const left = list.filter(r => (hoursSinceUpdate(r) || 0) > REMIND_HOURS);
+      const left = list.filter(isStale);
       if (!left.length) { close(); setInfo('需要更新进度的测试单都已跟进'); return; }
       left.forEach(r => {
-        const last = r.progress.last;
-        const days = Math.floor(hoursSinceUpdate(r) / 24);
         ul.appendChild(el('li', { class: 'mkz-remind__item' }, [
           el('div', { class: 'mkz-remind__main' }, [
             el('a', {
@@ -204,7 +212,7 @@
               text: `#${r.rawId} ${r.name}`,
               onclick: () => { r.tr.querySelector('a.iframe[href*="f=view"]')?.click(); }
             }),
-            el('div', { class: 'mkz-remind__meta', text: `${STATUS_TEXT[r.status]} · 最后更新 ${shortDate(last.date)} ${last.time} ${last.who} ${last.action}（${days} 天前）` })
+            el('div', { class: 'mkz-remind__meta', text: `${STATUS_TEXT[r.status]} · ${lastProgressText(r)}（${staleDays(r)} 天前）` })
           ]),
           el('button', { type: 'button', class: 'mkz-follow-btn', text: '跟进', onclick: () => openFollowDialog(r, renderList) })
         ]));
@@ -227,13 +235,13 @@
   }
 
   function staleDays(row) {
-    const last = row.progress?.last?.date;
-    return last ? dayDiff(todayStr(), last) : null;
+    const h = hoursSinceUpdate(row);
+    return h === null ? null : Math.floor(h / 24);
   }
 
   function isStale(row) {
-    const d = staleDays(row);
-    return row.status !== 'done' && d !== null && d > STALE_DAYS;
+    const h = hoursSinceUpdate(row);
+    return row.status !== 'done' && h !== null && h > STALE_HOURS;
   }
 
   function progressText(row) {
@@ -291,7 +299,7 @@
       body.appendChild(el('div', { class: 'mkz-last', text: `最近：${shortDate(p.last.date)} ${p.last.time} ${p.last.who} ${p.last.action}` }));
     }
     const d = staleDays(row);
-    if (isStale(row)) body.appendChild(el('span', { class: 'mkz-badge mkz-badge--stale', text: `${d} 天无更新` }));
+    if (isStale(row)) body.appendChild(el('span', { class: 'mkz-badge mkz-badge--stale', text: `${d} 天无更新`, title: lastProgressText(row) }));
   }
 
   // ---------- 概况：禅道原生弹窗关闭后，刷新这一行的进度（在概况里可能改了状态或写了备注） ----------
@@ -603,7 +611,7 @@
       el('span', { class: 'mkz-group__title', text: '风险' }),
       chip('已逾期', open.filter(r => overdueDays(r)).length, 'risk:overdue', 'mkz-chip--danger'),
       chip('今明到期', open.filter(isDueSoon).length, 'risk:soon', 'mkz-chip--warn'),
-      chip(`${STALE_DAYS}天无更新`, progressLoaded ? open.filter(isStale).length : '…', 'risk:stale', 'mkz-chip--warn'),
+      chip(`${STALE_HOURS / 24}天无更新`, progressLoaded ? open.filter(isStale).length : '…', 'risk:stale', 'mkz-chip--warn'),
       chip('未完成且无备注', progressLoaded ? open.filter(r => !r.progress.comments.length).length : '…', 'risk:nonote', 'mkz-chip--muted')
     ]);
 

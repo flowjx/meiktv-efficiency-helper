@@ -71,8 +71,8 @@ Chrome/Edge **Manifest V3** 插件（以“加载已解压的扩展程序”方�
 - **加载全部**：`.pager[data-link-creator]` 里 `{recPerPage}`→总数、`{page}`→1，重新拉列表替换 tbody（>1000 条不做）。替换后的行由 `zentao-list-main.js` 重新绑定原生弹窗（参数已核对与原生一致）。
 - **列宽**：表格 `table-layout: fixed`，给 ID 60 / 提测人员 120 / 版本 90px 定宽，其余给进度列；操作列隐藏 `#action-divider`（用例/关联用例/报告列表），宽 110px。
 - **提测人员列**：原“所属产品”列；`parseHistory()` 取历史第一条“创建”的人 → `creator`；下面一行小字“分组 · 日期 提测”。“所属项目”列隐藏。
-- **进度列**：并发 4 个请求 GET `m=testtask&f=view&taskID=N&onlybody=yes`，解析 `#actionbox .histories-list > li`（头部 `2026-11-13 17:50:40, 由 <strong>张三</strong> 编辑。`，备注 `.article-content.comment`，取第一个——自己写的备注会多一个“修改备注”编辑框）。显示最新两条备注（精确到分钟）+ 最近操作 + “N 天无更新”（`STALE_DAYS = 3`）。缓存 localStorage `mkz-progress2:<id>`（v2 加了 creator），30 分钟；筛选偏好 `mkz-prefs`。
-- **统计栏**：状态 / 风险（已逾期、今明到期、3 天无更新、未完成且无备注）/ **提测分组**（teamConfig.groups，名单外归“其他”；名单没加载时提示“未加载”）/ 负责人，点 chip 筛选再点取消。
+- **进度列**：并发 4 个请求 GET `m=testtask&f=view&taskID=N&onlybody=yes`，解析 `#actionbox .histories-list > li`（头部 `2026-11-13 17:50:40, 由 <strong>张三</strong> 编辑。`，备注 `.article-content.comment`，取第一个——自己写的备注会多一个“修改备注”编辑框）。显示最新两条备注（精确到分钟）+ 最近操作 + “N 天无更新”（`STALE_HOURS = 48`，**只按备注算**：最新备注时间，没有备注用创建时间；风险筛选、标签、进入页面提醒弹框共用 `isStale`）。进入列表页、进度首次加载完后，负责人=当前登录人且 isStale 的测试单弹框提醒（`showStaleReminder`，可直接跟进，跟进后从清单移除）。缓存 localStorage `mkz-progress2:<id>`（v2 加了 creator），30 分钟；筛选偏好 `mkz-prefs`。
+- **统计栏**：状态 / 风险（已逾期、今明到期、2 天无更新、未完成且无备注）/ **提测分组**（teamConfig.groups，名单外归“其他”；名单没加载时提示“未加载”）/ 负责人，点 chip 筛选再点取消。
 - **看概况**：单击名称（名称 `<a>` 已去掉 href，原来跳“用例”页）或双击行空白处 = 点该行 `a.iframe[href*="f=view"]`，即禅道原生概况弹窗；`refreshAfterModalClose()` 轮询 `#triggerModal.in` 由有到无后刷新该行进度。
 - **跟进**：进度列“跟进”按钮（flex 竖直居中）→ 弹窗 → `submitFollowUp()`：GET 该行编辑链接（`onlybody=yes`）拿表单，**原样带回全部字段**，只设 `comment`（转义、换行转 `<br />`），POST 回同一地址；之后强制刷新历史，最新备注等于提交内容才算成功。不用 `m=action&f=comment` 是因为本站该方法返回 `user-deny`。已在 #111 真实验证（字段无变化）。
 - **按钮**：清空筛选、刷新进度、导出CSV（含提测人员/分组/提测时间、最新两条备注）、复制摘要（被阻塞/已逾期/今明到期）、**复制归档SQL**（当前可见的已完成单 → `UPDATE \`meiktv_bug\`.\`meiktv_testtask\` SET \`product\` = 91 WHERE \`id\` = N;`，id 去前导 0，首行注释；插件不执行）。
