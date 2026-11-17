@@ -161,7 +161,7 @@
   }
 
   // ---------- 进入页面提醒：我的测试单超过 2 天没有更新 ----------
-  // “我的”= 当前登录人是提测人员（创建人）或负责人；“更新”= 详情页历史里的任何一条记录（备注、编辑、状态变更等）。
+  // “我的”= 当前登录人是这张测试单的负责人；“更新”= 详情页历史里的任何一条记录（备注、编辑、状态变更等）。
   function currentUserName() {
     return norm(document.querySelector('#userNav .user-name')?.textContent);
   }
@@ -178,7 +178,7 @@
     if (!me) return [];
     return rows.filter(r => {
       if (r.status === 'done' || !r.progress || r.progress.error) return false;
-      if (creatorName(r) !== me && r.owner !== me) return false;
+      if (r.owner !== me) return false;
       const h = hoursSinceUpdate(r);
       return h !== null && h > REMIND_HOURS;
     }).sort((a, b) => hoursSinceUpdate(b) - hoursSinceUpdate(a));
