@@ -5,7 +5,7 @@
     "禅道测试单列表：进入页面时，提醒负责人超过 2 天未更新进度的测试单，可直接跟进",
     "进度停滞改为只按备注计算（没写过备注从创建时间算），风险筛选改为“2天无更新”"
   ],
-  "download": "https://github.com/flowjx/meiktv-efficiency-helper/archive/refs/heads/main.zip",
+  "download": "http://172.16.5.36:8790/update/plugin.zip",
   "history": [
     {
       "version": "2.3.9",

@@ -24,7 +24,7 @@ Chrome/Edge **Manifest V3** 插件（以“加载已解压的扩展程序”方�
 | 禅道测试单列表 `bug.meiktv.com`（`body.m-testtask-browse`） | 表格上方“效率助手”工具栏 | 加载全部分页、统计/筛选（状态/风险/提测分组/负责人）、提测人员列、进度列（最新两条备注）、跟进写备注、搜索、导出 CSV、复制摘要、复制归档 SQL、单击名称/双击行打开原生概况 | `zentao.js` + `zentao-list-main.js` |
 | 禅道提交测试（`m-testtask-create`） | 表单内 | 项目固定“测试计划跟进”(136)、本页弹窗新建版本并自动选中、“负责人”改“测试负责人”、默认抄送名单、admin 禁止提交 | `zentao-create-main.js` + `zentao-sign.js` |
 | 禅道编辑测试单（`m-testtask-edit`） | 名称框 | 历史数据名称以【某人】开头的，签名锁定不可改 | `zentao-sign.js` |
-| 所有上述页面 | 工具栏图标弹窗 / 页面左下角提示条 | 检查更新（GitHub，失败走内网）、一键重新加载插件 | `background.js` `popup.*` `update-notice.js` |
+| 所有上述页面 | 工具栏图标弹窗 / 页面左下角提示条 | 检查更新（只走内网 5.36）、一键重新加载插件 | `background.js` `popup.*` `update-notice.js` |
 | 后台静默 | — | 安装明细上报（姓名/部门/职位/版本/浏览器）、拉取分组和抄送名单 | `background.js` `identity.js` + `server/` |
 
 ## 2. 文件地图
@@ -33,10 +33,10 @@ Chrome/Edge **Manifest V3** 插件（以“加载已解压的扩展程序”方�
 
 | 文件 | 内容 |
 |---|---|
-| `manifest.json` | 3 组 content_scripts：① op/音乐后台 `update-notice.js + content.js`；② `bug.meiktv.com/*`：`update-notice.js, identity.js, zentao.js, zentao-sign.js`（隔离环境）；③ `bug.meiktv.com/*` **`world: "MAIN"`**：`zentao-create-main.js, zentao-list-main.js`。均 `all_frames: true`。权限 `alarms, storage`；host_permissions 含 `raw.githubusercontent.com` 和内网 `http://172.16.5.36/*` |
-| `update-config.js` | 所有地址集中在这：GitHub 仓库/分支、内网更新源、上报地址、分组配置地址、检查间隔（60 分钟）、超时。**换地址只改这里**（并同步 manifest host_permissions） |
-| `background.js` | service worker：`checkUpdate()`（`fetchLatest()` 先 GitHub 后内网）、`report()` 安装上报、`fetchTeamConfig()` 拉分组/抄送名单；安装/启动/每小时 alarm 触发；消息 `meiktv-check-update`、`meiktv-reload`、`meiktv-identity`、`meiktv-team-config` |
-| `popup.html/js/css` | 工具栏弹窗：当前/最新版本、更新内容、按来源（GitHub/内网）显示不同下载步骤、立即检查、重新加载插件（`chrome.runtime.reload()`） |
+| `manifest.json` | 3 组 content_scripts：① op/音乐后台 `update-notice.js + content.js`；② `bug.meiktv.com/*`：`update-notice.js, identity.js, zentao.js, zentao-sign.js`（隔离环境）；③ `bug.meiktv.com/*` **`world: "MAIN"`**：`zentao-create-main.js, zentao-list-main.js`。均 `all_frames: true`。权限 `alarms, storage`；host_permissions 含内网 `http://172.16.5.36/*`（2.4.1 起去掉了 `raw.githubusercontent.com`） |
+| `update-config.js` | 所有地址集中在这：内网更新源 `versionUrl`/`zipUrl`（updater 也用正则从这里读）、上报地址、分组配置地址、检查间隔（60 分钟）、超时。**换地址只改这里**（并同步 manifest host_permissions） |
+| `background.js` | service worker：`checkUpdate()`（`fetchLatest()` 只走内网）、`report()` 安装上报、`fetchTeamConfig()` 拉分组/抄送名单；安装/启动/每小时 alarm 触发；消息 `meiktv-check-update`、`meiktv-reload`、`meiktv-identity`、`meiktv-team-config` |
+| `popup.html/js/css` | 工具栏弹窗：当前/最新版本、更新内容、按自动更新状态显示：已开启不显示手动步骤、磁盘已是新版时给“立即重新加载”、未开启时展开两步开启指引；立即检查、重新加载插件（`chrome.runtime.reload()`） |
 | `update-notice.js` | 顶层页面左下角新版本提示条，每个版本点“知道了”后不再弹 |
 | `identity.js` | 禅道顶层页面：右上角姓名 + 每天最多一次 `m=my&f=profile` 取部门/职位 → background 上报。**不取“用户名”（是手机号）** |
 | `content.js` / `styles.css` | op 后台与音乐后台功能（见第 6 节），类名前缀 `meiktv-` |
@@ -44,8 +44,8 @@ Chrome/Edge **Manifest V3** 插件（以“加载已解压的扩展程序”方�
 | `zentao-list-main.js` | MAIN 环境：给插件替换进来的列表行重新绑定禅道原生弹窗 `$(a).modalTrigger({type:'iframe'})` |
 | `zentao-create-main.js` | MAIN 环境：提交测试页的项目锁定、新建版本弹窗、默认抄送（操作禅道 jQuery/chosen 必须在页面环境；MAIN 环境不能用 chrome.* API） |
 | `zentao-sign.js` | 隔离环境：提交测试页改“测试负责人”文案、admin 拦截、把抄送名单写到 `<html data-mkz-mailto>` 给 MAIN 脚本；编辑页锁定历史签名 |
-| `version.json` | 最新版本信息 `version/date/notes/download/history`，插件读 GitHub 上的这个文件 |
-| `updater/auto-update.ps1` | 自动更新脚本（UTF-8 **带 BOM**，PS 5.1 才能正确读中文）：读本地 manifest 版本 → 查最新（先 GitHub，失败走内网；地址从 `update-config.js` 正则读出）→ git 仓库只在工作区干净时 `git pull --ff-only`，否则下载 zip（GitHub 查到版本但 zip 下载失败时改从内网下载，此时只要求 zip 版本比本地新）、校验 zip 内版本、robocopy 覆盖（**manifest.json 最后复制**）。写 `updater/status.json`、`updater/update.log`（均 gitignore）。参数 `-ForceIntranet`、`-DryRun`、`-SimulateGithubZipFail` 用于测试 |
+| `version.json` | 最新版本信息 `version/date/notes/download/history`，插件读内网服务发出的这个文件（release 分支上的版本） |
+| `updater/auto-update.ps1` | 自动更新脚本（UTF-8 **带 BOM**，PS 5.1 才能正确读中文）：读本地 manifest 版本 → 从内网查最新（`versionUrl`/`zipUrl` 从 `update-config.js` 正则读出）→ git 仓库（开发目录）直接跳过；否则下载 zip、校验 zip 内版本等于 version.json、robocopy 覆盖（**manifest.json 最后复制**）。写 `updater/status.json`、`updater/update.log`（均 gitignore）。参数 `-DryRun` |
 | `updater/install-updater.ps1` | 注册/删除当前用户的计划任务 `MeiktvHelperAutoUpdate`（每小时 + 登录时；登录触发器建不了就只用每小时），动作 `wscript run-hidden.vbs`。`-Uninstall`、`-DryRun` |
 | `updater/run-hidden.vbs` | 隐藏窗口启动 auto-update.ps1；**只用 ASCII**，路径运行时从自身位置推出（插件路径可能含中文） |
 | `安装自动更新.bat` / `卸载自动更新.bat` | 插件根目录，双击调用 install-updater.ps1 |
@@ -93,7 +93,7 @@ Chrome/Edge **Manifest V3** 插件（以“加载已解压的扩展程序”方�
 | `POST /api/ping` | 插件安装上报，按 client_id upsert 到 MySQL `meiktv_business.helper_install`（首次启动自动建表） |
 | `GET /installs?key=<admin_key>` | 安装明细页（安装数、24h 活跃、待更新、每人版本/最后活跃） |
 | `GET /api/team-config` | 返回 `config.local.json` 的 `team.groups` 和 `team.mailto` |
-| `GET /update/version.json`、`/update/plugin.zip` | 内网备用更新源：`git show origin/main:version.json`、`git archive origin/main`（按 sha 缓存，目录结构同 GitHub zip） |
+| `GET /update/version.json`、`/update/plugin.zip` | **唯一**更新源：`git show release:version.json`、`git archive release`（按 sha 缓存；没有 release 分支时退回 origin/main） |
 | `GET /health` | 健康检查 |
 
 - MySQL：本机 `localhost:3306`，库 `meiktv_business`，连接信息在 `config.local.json`（不要写进任何提交）。
@@ -110,18 +110,18 @@ Chrome/Edge **Manifest V3** 插件（以“加载已解压的扩展程序”方�
 ## 5. 在线更新与发版
 
 - 已解压安装的插件不会被浏览器自动更新，只做“检查 + 提醒 + 一键重新加载”。MV3 禁止远程代码，不要尝试远程拉 js。
-- **静默自动更新（2026-11-17，方案 A）**：同事在插件目录双击“安装自动更新.bat”后，计划任务每小时跑 `updater/auto-update.ps1` 覆盖文件；`background.js` 每 5 分钟（alarm `meiktv-disk-check`）+ 浏览器启动时 `checkDiskVersion()`：fetch `chrome.runtime.getURL('manifest.json')`（已解压插件读的是磁盘实时文件），比运行中版本新就 `chrome.runtime.reload()`。弹窗读 `updater/status.json` 显示“自动更新：已开启/未开启/超过 3 小时没运行”。已实测：2.3.5 副本经 GitHub、经内网（`-ForceIntranet`）都更新到 2.3.6；干净 git 克隆 pull 成功、有改动的 git 克隆跳过；再次运行显示已最新；`checkDiskVersion` 用 node 模拟过。**未实测**：真实浏览器里磁盘版本变化后是否自动 reload、计划任务真实注册（只跑过 `-DryRun`）。维护者自己的开发目录不要装（有改动会跳过，但没必要）。
-- 检查：每 60 分钟 + 浏览器启动 + 弹窗“立即检查”。先 GitHub raw（8 秒超时，约 5 分钟 CDN 缓存），失败走内网；`update.source` 记录来源，内网时下载链接换内网 zip。2.3.6 之前的版本没有内网兜底。
+- **静默自动更新（2026-11-17，方案 A）**：同事在插件目录双击“安装自动更新.bat”后，计划任务每小时跑 `updater/auto-update.ps1` 覆盖文件；`background.js` 每 5 分钟（alarm `meiktv-disk-check`）+ 浏览器启动时 `checkDiskVersion()`：fetch `chrome.runtime.getURL('manifest.json')`（已解压插件读的是磁盘实时文件），比运行中版本新就 `chrome.runtime.reload()`。弹窗读 `updater/status.json` 显示“自动更新：已开启/未开启/超过 3 小时没运行”。已实测：2.3.5 副本经 GitHub、经内网（`-ForceIntranet`）都更新到 2.3.6；干净 git 克隆 pull 成功、有改动的 git 克隆跳过；再次运行显示已最新；`checkDiskVersion` 用 node 模拟过。后续真实验证：维护者电脑计划任务注册成功、磁盘变新后插件自动 reload 成功（2.3.8→2.3.9 时旧页面提示条失效即因此，已修）。2.4.1 起只走内网，git 仓库目录一律跳过。
+- 检查：每 60 分钟 + 浏览器启动 + 弹窗“立即检查”，**只走内网**（2.4.1 起；8 秒超时）。2.4.0 及以前先查 GitHub 再内网，所以 2.4.1 这一版必须也推到 GitHub，老客户端才能升上来；之后 GitHub 只是代码备份。
 - **发版流程**：
   ```bash
   python scripts/bump_version.py 2.3.7 "更新说明1" "更新说明2"
   git add -A
   git diff --cached        # 扫一遍：无密码/口令/手机号/同事姓名
   git commit -m "release 2.3.7"
-  git push                 # 失败就重试；内网源取 origin/main，push 成功内网才更新
-  git ls-remote origin main; git rev-parse HEAD   # 两者一致
+  git branch -f release HEAD   # 这一步才是发版：内网服务只发 release 分支
+  git push                 # 可选：代码备份到 GitHub（失败就重试，不影响发版）
   ```
-  发完用 `curl` 看 GitHub raw（按 commit sha 的地址绕过缓存）和 `http://172.16.5.36:8790/update/version.json` 都是新版本。
+  发完用 `curl http://172.16.5.36:8790/update/version.json` 确认是新版本。
 - 版本历史：2.1.0 原始（op/音乐）→ 2.3.0 在线更新 + 禅道列表增强 → 2.3.1 新图标 → 2.3.2 弹窗去仓库链接 → 2.3.3 列宽/分钟时间/安装统计/1 小时检查 → 2.3.4 跟进/归档SQL/隐藏三个操作按钮 → 2.3.5 提交测试签名+项目锁定+新建版本弹窗+默认抄送、双击原生概况、alert 误判修复 → 2.3.6 提测人员列+分组筛选、名称点开概况、去签名、测试负责人、admin 禁提、内网更新兜底。
 
 ## 6. op 后台 / 音乐后台（content.js）

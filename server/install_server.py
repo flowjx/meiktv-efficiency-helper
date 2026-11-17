@@ -195,10 +195,11 @@ class Handler(BaseHTTPRequestHandler):
         return self._send(200, render_page(), "text/html; charset=utf-8")
 
 
-# ---------- 内网更新：GitHub 不通时插件改从这里取 ----------
-# 只提供“已发布”的内容：取本地仓库的 origin/main（最后一次成功推到 GitHub 的提交），本地未推送的改动不会被下载到。
+# ---------- 内网更新：插件和 updater 只从这里取新版 ----------
+# 只提供“已发布”的内容：取本地仓库的 release 分支（发版时 git branch -f release HEAD），本地未发版的提交不会被下载到。
+# 还没有 release 分支时退回 origin/main（旧的发版方式）。
 REPO_DIR = HERE.parent
-RELEASE_REF = "origin/main"
+RELEASE_REFS = ("refs/heads/release", "origin/main")
 _zip_cache = {"sha": "", "data": b""}
 _zip_lock = threading.Lock()
 
@@ -210,9 +211,19 @@ def _git(*args):
                           creationflags=flags, check=True).stdout
 
 
+def release_ref():
+    for ref in RELEASE_REFS:
+        try:
+            _git("rev-parse", "--verify", "--quiet", ref)
+            return ref
+        except Exception:  # noqa: BLE001
+            continue
+    raise RuntimeError("没有 release 分支，也没有 origin/main")
+
+
 def released_file(path):
     try:
-        return _git("show", f"{RELEASE_REF}:{path}")
+        return _git("show", f"{release_ref()}:{path}")
     except Exception as e:  # noqa: BLE001
         log(f"读取已发布文件 {path} 失败：{e}")
         return None
@@ -220,11 +231,12 @@ def released_file(path):
 
 def released_zip():
     try:
-        sha = _git("rev-parse", RELEASE_REF).decode().strip()
+        ref = release_ref()
+        sha = _git("rev-parse", ref).decode().strip()
         with _zip_lock:
             if _zip_cache["sha"] != sha:
-                # 目录结构与 GitHub 下载的 zip 一致：meiktv-efficiency-helper-main/...
-                _zip_cache["data"] = _git("archive", "--format=zip", "--prefix=meiktv-efficiency-helper-main/", RELEASE_REF)
+                # 压缩包里是 meiktv-efficiency-helper-main/ 目录（沿用旧结构，updater 按 manifest.json 位置找根目录）
+                _zip_cache["data"] = _git("archive", "--format=zip", "--prefix=meiktv-efficiency-helper-main/", ref)
                 _zip_cache["sha"] = sha
                 log(f"已打包内网更新 zip：{sha[:7]}，{len(_zip_cache['data']) // 1024} KB")
             return _zip_cache["data"]

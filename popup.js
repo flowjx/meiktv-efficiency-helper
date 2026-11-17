@@ -64,7 +64,7 @@
       $('state').textContent = '尚未检查';
       return;
     }
-    // 远端比当前旧（如 GitHub 缓存还没刷新、或自己是开发目录）时，最新版本就是当前版本
+    // 远端比当前旧（如自己是开发目录、还没发版）时，最新版本就是当前版本
     $('latest').textContent = info.latest ? (compareVersion(info.latest, current) < 0 ? current : info.latest) : '-';
     $('checked-at').textContent = info.checkedAt ? `上次检查 ${new Date(info.checkedAt).toLocaleString('zh-CN', { hour12: false })}` : '';
 
@@ -100,17 +100,13 @@
         note.hidden = true;
         $('reload-now').hidden = true;
         $('manual').hidden = false;
-        const intranet = info.source === 'intranet';
-        $('step-github').hidden = intranet;
-        $('step-intranet').hidden = !intranet;
-        document.querySelectorAll('.download').forEach(a => { a.href = info.download || UPDATE_CONFIG.zipUrl; });
-        $('source').textContent = intranet ? '来源：公司内网（GitHub 不可用时的备用通道）' : '来源：GitHub';
+        document.querySelectorAll('.download').forEach(a => { a.href = UPDATE_CONFIG.zipUrl; });
       }
     } else {
       $('update').hidden = true;
       state.className = info.error ? 'state is-error' : 'state is-ok';
       state.textContent = info.error ? `检查失败：${info.error}`
-        : `已是最新版本${info.source === 'intranet' ? '（通过公司内网检查）' : ''}`;
+        : '已是最新版本';
     }
   }
 

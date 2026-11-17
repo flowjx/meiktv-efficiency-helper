@@ -76,7 +76,6 @@
     "https://op.meiktv.com/*",
     "http://music.remote.meiktv.com/*",
     "https://bug.meiktv.com/*",
-    "https://raw.githubusercontent.com/*",
     "http://172.16.5.36/*"
   ]
 }

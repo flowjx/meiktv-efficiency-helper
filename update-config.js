@@ -1,15 +1,11 @@
-// 在线更新配置：改仓库只需要改这里（background.js 和 popup.js 共用）。
+// 在线更新配置（background.js、popup.js、updater/auto-update.ps1 共用）。
 // version.json 放在仓库根目录，发版时由 scripts/bump_version.py 和 manifest.json 一起改。
 const UPDATE_CONFIG = {
-  repo: 'flowjx/meiktv-efficiency-helper',
-  branch: 'main',
-  get versionUrl() { return `https://raw.githubusercontent.com/${this.repo}/${this.branch}/version.json`; },
-  get repoUrl() { return `https://github.com/${this.repo}`; },
-  get zipUrl() { return `https://github.com/${this.repo}/archive/refs/heads/${this.branch}.zip`; },
+  // 更新只走公司内网（server/install_server.py 提供，内容是本地仓库 release 分支 = 已发布版本）。
+  // updater/auto-update.ps1 也从这里读这两个地址，改地址时同步改 manifest.json 的 host_permissions。
+  versionUrl: 'http://172.16.5.36:8790/update/version.json',
+  zipUrl: 'http://172.16.5.36:8790/update/plugin.zip',
   checkIntervalMinutes: 60,
-  // GitHub 连不上时的内网更新源（server/install_server.py 提供，内容是已推送到 GitHub 的 origin/main）
-  intranetVersionUrl: 'http://172.16.5.36:8790/update/version.json',
-  intranetZipUrl: 'http://172.16.5.36:8790/update/plugin.zip',
   fetchTimeoutMs: 8000,
   // 安装明细上报（server/install_server.py）。改地址时同步改 manifest.json 的 host_permissions。
   reportUrl: 'http://172.16.5.36:8790/api/ping',

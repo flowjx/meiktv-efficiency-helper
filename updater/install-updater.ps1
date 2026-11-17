@@ -32,7 +32,7 @@ Write-Host '插件目录：' $PluginDir
 Write-Host '任务名称：' $TaskName
 Write-Host '运行频率：每小时一次，另外每次登录 Windows 时运行一次'
 if (Test-Path (Join-Path $PluginDir '.git')) {
-  Write-Host '提示：插件目录是 git 仓库，自动更新只会在没有本地改动时执行 git pull。' -ForegroundColor Yellow
+  Write-Host '提示：插件目录是 git 仓库（开发目录），自动更新会跳过它。' -ForegroundColor Yellow
 }
 if ($DryRun) { Write-Host '（DryRun：未创建任务）'; exit 0 }
 
@@ -42,7 +42,7 @@ $logon = New-ScheduledTaskTrigger -AtLogOn -User $User
 $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
   -ExecutionTimeLimit (New-TimeSpan -Minutes 15) -MultipleInstances IgnoreNew
 $principal = New-ScheduledTaskPrincipal -UserId $User -LogonType Interactive -RunLevel Limited
-$desc = '魅KTV效率助手：检查并安装插件新版本（GitHub 不通时走公司内网）。卸载：运行插件目录里的“卸载自动更新.bat”。'
+$desc = '魅KTV效率助手：检查并安装插件新版本（从公司内网更新服务下载）。卸载：运行插件目录里的“卸载自动更新.bat”。'
 
 try {
   Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger @($hourly, $logon) -Settings $settings `

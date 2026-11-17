@@ -1,4 +1,4 @@
-// 后台 service worker：定时检查 version.json（先 GitHub，连不上再走内网服务），有新版时给工具栏图标加角标，
+// 后台 service worker：定时从公司内网更新服务检查 version.json，有新版时给工具栏图标加角标，
 // 并把结果写进 chrome.storage.local.update，供弹窗和页面提示条读取。
 importScripts('update-config.js');
 
@@ -34,24 +34,14 @@ async function fetchJson(url) {
   }
 }
 
-// 先 GitHub，失败再内网；返回 { remote, source, download }
+// 只走公司内网；返回 { remote, source, download }
 async function fetchLatest() {
-  const errors = [];
   try {
     const remote = await fetchJson(UPDATE_CONFIG.versionUrl);
-    return { remote, source: 'github', download: remote.download || UPDATE_CONFIG.zipUrl };
+    return { remote, source: 'intranet', download: UPDATE_CONFIG.zipUrl };
   } catch (e) {
-    errors.push(`GitHub：${e.message}`);
+    throw new Error(`连不上公司内网更新服务（${e.message}），不在公司网络时属正常`);
   }
-  if (UPDATE_CONFIG.intranetVersionUrl) {
-    try {
-      const remote = await fetchJson(UPDATE_CONFIG.intranetVersionUrl);
-      return { remote, source: 'intranet', download: UPDATE_CONFIG.intranetZipUrl };
-    } catch (e) {
-      errors.push(`内网：${e.message}`);
-    }
-  }
-  throw new Error(errors.join('；'));
 }
 
 async function checkUpdate() {
@@ -70,7 +60,7 @@ async function checkUpdate() {
     });
   } catch (e) {
     const { update: old } = await chrome.storage.local.get('update');
-    // 两个来源都失败时保留上次结果，只记录错误
+    // 检查失败时保留上次结果，只记录错误
     Object.assign(result, old || {}, { current, checkedAt: Date.now(), error: e.message || '检查失败' });
     if (old && compareVersion(old.latest, current) <= 0) result.hasUpdate = false;
   }

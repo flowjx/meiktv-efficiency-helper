@@ -2,8 +2,11 @@
 
 用法（在插件目录执行）：
     python scripts/bump_version.py 2.3.1 "修复xxx" "新增yyy"
-然后 git add -A && git commit -m "release 2.3.1" && git push
-已安装的插件最多 1 小时内（或在弹窗点“立即检查”）就会提示更新。
+然后：
+    git add -A && git commit -m "release 2.3.1"
+    git branch -f release HEAD     # 内网更新服务（server/install_server.py）只发 release 分支，这一步才算真正发版
+    git push                       # 可选：代码备份到 GitHub（插件更新已不走 GitHub）
+已安装的插件最多 1 小时内（或在弹窗点“立即检查”）就会提示更新；开了自动更新的会自动装上。
 """
 import datetime
 import json
