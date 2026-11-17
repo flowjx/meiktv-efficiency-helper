@@ -47,6 +47,7 @@ Chrome/Edge **Manifest V3** 插件（以“加载已解压的扩展程序”方�
 | `version.json` | 最新版本信息 `version/date/notes/download/history`，插件读内网服务发出的这个文件（release 分支上的版本） |
 | `updater/auto-update.ps1` | 自动更新脚本（UTF-8 **带 BOM**，PS 5.1 才能正确读中文）：读本地 manifest 版本 → 从内网查最新（`versionUrl`/`zipUrl` 从 `update-config.js` 正则读出）→ git 仓库（开发目录）直接跳过；否则下载 zip、校验 zip 内版本等于 version.json、robocopy 覆盖（**manifest.json 最后复制**）。写 `updater/status.json`、`updater/update.log`（均 gitignore）。参数 `-DryRun` |
 | `updater/install-updater.ps1` | 注册/删除当前用户的计划任务 `MeiktvHelperAutoUpdate`（每小时 + 登录时；登录触发器建不了就只用每小时），动作 `wscript run-hidden.vbs`。`-Uninstall`、`-DryRun` |
+| 立即更新（2.4.3） | `install-updater.ps1` 额外写 HKCU `Software\Classes\meiktv-helper-update`（URL 协议，命令 `wscript run-hidden.vbs`，不接收参数；卸载时删除）。`auto-update.ps1` 在 status.json 写 `protocol: true/false`。弹窗有新版且自动更新正常、protocol 为真时显示“立即更新”：`chrome.tabs.update({url:'meiktv-helper-update:run'})` 触发浏览器外部协议确认框，并发消息 `meiktv-watch-disk` 让后台 5 分钟内每 30 秒（alarm `meiktv-disk-fast`）检查磁盘版本、变新即 reload。本机已验证协议能拉起 updater；浏览器里点按钮未实测 |
 | `updater/run-hidden.vbs` | 隐藏窗口启动 auto-update.ps1；**只用 ASCII**，路径运行时从自身位置推出（插件路径可能含中文） |
 | `安装自动更新.bat` / `卸载自动更新.bat` | 插件根目录，双击调用 install-updater.ps1 |
 | `zentao-status-note.js` | 测试单开始/关闭/阻塞（`m=testtask&f=start|close|block`）备注必填：捕获阶段拦截 `#submit` 点击和 form submit，读 KindEditor 的 `.ke-edit-iframe` 正文（含图片算有内容），回退读 textarea；空则阻止并在编辑器下方提示 |

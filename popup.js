@@ -90,15 +90,21 @@
         note.hidden = false;
         note.textContent = `新版本 ${diskVersion} 已下载好，几分钟内会自动生效，也可以点下面按钮立即生效。`;
         $('reload-now').hidden = false;
+        $('update-now').hidden = true;
         $('manual').hidden = true;
       } else if (auto.on && !auto.stale && auto.status.result !== 'error' && auto.status.result !== 'skipped') {
         note.hidden = false;
-        note.textContent = '已开启自动更新，1 小时内会自动安装新版本，无需任何操作。';
+        const canRun = Boolean(auto.status.protocol);
+        note.textContent = canRun
+          ? '已开启自动更新，1 小时内会自动安装；也可以点下面按钮立即更新。'
+          : '已开启自动更新，1 小时内会自动安装。想马上更新：在插件目录再双击一次“安装自动更新.bat”（之后这里会出现“立即更新”按钮）。';
+        $('update-now').hidden = !canRun;
         $('reload-now').hidden = true;
         $('manual').hidden = true;
       } else {
         note.hidden = true;
         $('reload-now').hidden = true;
+        $('update-now').hidden = true;
         $('manual').hidden = false;
         document.querySelectorAll('.download').forEach(a => { a.href = UPDATE_CONFIG.zipUrl; });
       }
@@ -136,5 +142,14 @@
     window.close();
   };
   $('reload').addEventListener('click', reload);
+
+  // 立即更新：打开“安装自动更新.bat”注册的链接协议，Windows 在后台跑一次 updater（浏览器首次会问是否打开，勾选“始终允许”）。
+  // 弹窗随后会关闭，由后台在接下来几分钟里每 30 秒看一次磁盘版本，变新就自动重新加载插件。
+  $('update-now').addEventListener('click', async () => {
+    await chrome.runtime.sendMessage({ type: 'meiktv-watch-disk' }).catch(() => {});
+    chrome.tabs.update({ url: 'meiktv-helper-update:run' });
+    $('update-now').disabled = true;
+    $('update-now').textContent = '正在后台更新，约 1 分钟后插件自动重新加载…';
+  });
   $('reload-now').addEventListener('click', reload);
 })();

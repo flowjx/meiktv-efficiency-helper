@@ -30,6 +30,7 @@ function Save-Status([string]$result, [string]$message, $remote) {
     localVersion  = (Get-LocalVersion)
     remoteVersion = if ($remote) { $remote.version } else { '' }
     source        = if ($remote) { $remote.source } else { '' }
+    protocol      = (Test-Path 'HKCU:\Software\Classes\meiktv-helper-update\shell\open\command')   # 弹窗据此显示“立即更新”按钮
   }
   try {
     [IO.File]::WriteAllText($StatusFile, ($status | ConvertTo-Json), (New-Object Text.UTF8Encoding($false)))
