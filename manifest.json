@@ -51,7 +51,8 @@
         "update-notice.js",
         "identity.js",
         "zentao.js",
-        "zentao-sign.js"
+        "zentao-sign.js",
+        "zentao-status-note.js"
       ],
       "css": [
         "zentao.css"

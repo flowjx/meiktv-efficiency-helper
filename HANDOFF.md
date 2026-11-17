@@ -49,6 +49,7 @@ Chrome/Edge **Manifest V3** 插件（以“加载已解压的扩展程序”方�
 | `updater/install-updater.ps1` | 注册/删除当前用户的计划任务 `MeiktvHelperAutoUpdate`（每小时 + 登录时；登录触发器建不了就只用每小时），动作 `wscript run-hidden.vbs`。`-Uninstall`、`-DryRun` |
 | `updater/run-hidden.vbs` | 隐藏窗口启动 auto-update.ps1；**只用 ASCII**，路径运行时从自身位置推出（插件路径可能含中文） |
 | `安装自动更新.bat` / `卸载自动更新.bat` | 插件根目录，双击调用 install-updater.ps1 |
+| `zentao-status-note.js` | 测试单开始/关闭/阻塞（`m=testtask&f=start|close|block`）备注必填：捕获阶段拦截 `#submit` 点击和 form submit，读 KindEditor 的 `.ke-edit-iframe` 正文（含图片算有内容），回退读 textarea；空则阻止并在编辑器下方提示 |
 | `scripts/bump_version.py` | 发版：同时改 manifest.json 和 version.json（版本号必须递增） |
 | `scripts/make_icon.py` | 生成 `icons/`（玫红→紫渐变圆角方 + 白闪电 + 小黄星，16px 无星） |
 | `meiktv-logo-transparent.png` | 品牌原 logo，仅作素材，插件不用 |
