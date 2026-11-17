@@ -333,3 +333,8 @@
 .mkz-remind__name { font-weight: bold; color: #1f2329; }
 .mkz-remind__name:hover { color: #2e7fff; }
 .mkz-remind__meta { margin-top: 2px; color: #b86e00; font-size: 12px; }
+
+/* 提测人员、进度两列：禅道单元格行高 30px（字号 13px），行与行之间空隙太大，改为 21px（空隙约减半） */
+.mkz-creator,
+.mkz-creator__meta,
+.mkz-progress-body { line-height: 21px; }
