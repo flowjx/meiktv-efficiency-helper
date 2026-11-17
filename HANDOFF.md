@@ -35,7 +35,7 @@ Chrome/Edge **Manifest V3** 插件（以“加载已解压的扩展程序”方�
 |---|---|
 | `manifest.json` | 3 组 content_scripts：① op/音乐后台 `update-notice.js + content.js`；② `bug.meiktv.com/*`：`update-notice.js, identity.js, zentao.js, zentao-sign.js`（隔离环境）；③ `bug.meiktv.com/*` **`world: "MAIN"`**：`zentao-create-main.js, zentao-list-main.js`。均 `all_frames: true`。权限 `alarms, storage`；host_permissions 含内网 `http://172.16.5.36/*`（2.4.1 起去掉了 `raw.githubusercontent.com`） |
 | `update-config.js` | 所有地址集中在这：内网更新源 `versionUrl`/`zipUrl`（updater 也用正则从这里读）、上报地址、分组配置地址、检查间隔（60 分钟）、超时。**换地址只改这里**（并同步 manifest host_permissions） |
-| `background.js` | service worker：`checkUpdate()`（`fetchLatest()` 只走内网）、`report()` 安装上报、`fetchTeamConfig()` 拉分组/抄送名单；安装/启动/每小时 alarm 触发；消息 `meiktv-check-update`、`meiktv-reload`、`meiktv-identity`、`meiktv-team-config` |
+| `background.js` | service worker：`checkUpdate()`（`fetchLatest()` 只走内网）、`report()` 安装上报、`fetchTeamConfig()` 拉分组/抄送名单；安装/启动/每小时 alarm 触发检查更新，每 1 分钟 alarm `meiktv-disk-check` 查磁盘版本；消息 `meiktv-check-update`、`meiktv-reload`、`meiktv-identity`、`meiktv-team-config` |
 | `popup.html/js/css` | 工具栏弹窗：当前/最新版本、更新内容、按自动更新状态显示：已开启不显示手动步骤、磁盘已是新版时给“立即重新加载”、未开启时展开两步开启指引；立即检查、重新加载插件（`chrome.runtime.reload()`） |
 | `update-notice.js` | 顶层页面左下角新版本提示条，每个版本点“知道了”后不再弹 |
 | `identity.js` | 禅道顶层页面：右上角姓名 + 每天最多一次 `m=my&f=profile` 取部门/职位 → background 上报。**不取“用户名”（是手机号）** |
@@ -46,8 +46,8 @@ Chrome/Edge **Manifest V3** 插件（以“加载已解压的扩展程序”方�
 | `zentao-sign.js` | 隔离环境：提交测试页改“测试负责人”文案、admin 拦截、把抄送名单写到 `<html data-mkz-mailto>` 给 MAIN 脚本；编辑页锁定历史签名 |
 | `version.json` | 最新版本信息 `version/date/notes/download/history`，插件读内网服务发出的这个文件（release 分支上的版本） |
 | `updater/auto-update.ps1` | 自动更新脚本（UTF-8 **带 BOM**，PS 5.1 才能正确读中文）：读本地 manifest 版本 → 从内网查最新（`versionUrl`/`zipUrl` 从 `update-config.js` 正则读出）→ git 仓库（开发目录）直接跳过；否则下载 zip、校验 zip 内版本等于 version.json、robocopy 覆盖（**manifest.json 最后复制**）。写 `updater/status.json`、`updater/update.log`（均 gitignore）。参数 `-DryRun` |
-| `updater/install-updater.ps1` | 注册/删除当前用户的计划任务 `MeiktvHelperAutoUpdate`（每小时 + 登录时；登录触发器建不了就只用每小时），动作 `wscript run-hidden.vbs`。`-Uninstall`、`-DryRun` |
-| 立即更新（2.4.3） | `install-updater.ps1` 额外写 HKCU `Software\Classes\meiktv-helper-update`（URL 协议，命令 `wscript run-hidden.vbs`，不接收参数；卸载时删除）。`auto-update.ps1` 在 status.json 写 `protocol: true/false`。弹窗有新版且自动更新正常、protocol 为真时显示“立即更新”：`chrome.tabs.update({url:'meiktv-helper-update:run'})` 触发浏览器外部协议确认框，并发消息 `meiktv-watch-disk` 让后台 5 分钟内每 30 秒（alarm `meiktv-disk-fast`）检查磁盘版本、变新即 reload。本机已验证协议能拉起 updater；浏览器里点按钮未实测 |
+| `updater/install-updater.ps1` | 注册/删除当前用户的计划任务 `MeiktvHelperAutoUpdate`（每 5 分钟 + 登录时；登录触发器建不了就只用每 5 分钟；顺手删除 2.4.3 的旧链接协议），动作 `wscript run-hidden.vbs`。`-Uninstall`、`-DryRun` |
+| 立即更新（2.4.3，已在 2.4.5 去掉） | 曾用 HKCU URL 协议 `meiktv-helper-update:` + 弹窗 `chrome.tabs.update` 触发 updater；同事的 Edge 电脑上 Win+R 打开该协议都没反应（原因未查明），改为定时任务每 5 分钟跑一次。`auto-update.ps1` 的 `Update-TaskSchedule` 会把老的每小时任务自动改成每 5 分钟并删除该协议 |
 | `updater/run-hidden.vbs` | 隐藏窗口启动 auto-update.ps1；**只用 ASCII**，路径运行时从自身位置推出（插件路径可能含中文） |
 | `安装自动更新.bat` / `卸载自动更新.bat` | 插件根目录，双击调用 install-updater.ps1 |
 | `zentao-status-note.js` | 测试单开始/关闭/阻塞（`m=testtask&f=start|close|block`）备注必填：捕获阶段拦截 `#submit` 点击和 form submit，读 KindEditor 的 `.ke-edit-iframe` 正文（含图片算有内容），回退读 textarea；空则阻止并在编辑器下方提示 |
@@ -112,7 +112,7 @@ Chrome/Edge **Manifest V3** 插件（以“加载已解压的扩展程序”方�
 ## 5. 在线更新与发版
 
 - 已解压安装的插件不会被浏览器自动更新，只做“检查 + 提醒 + 一键重新加载”。MV3 禁止远程代码，不要尝试远程拉 js。
-- **静默自动更新（2026-11-17，方案 A）**：同事在插件目录双击“安装自动更新.bat”后，计划任务每小时跑 `updater/auto-update.ps1` 覆盖文件；`background.js` 每 5 分钟（alarm `meiktv-disk-check`）+ 浏览器启动时 `checkDiskVersion()`：fetch `chrome.runtime.getURL('manifest.json')`（已解压插件读的是磁盘实时文件），比运行中版本新就 `chrome.runtime.reload()`。弹窗读 `updater/status.json` 显示“自动更新：已开启/未开启/超过 3 小时没运行”。已实测：2.3.5 副本经 GitHub、经内网（`-ForceIntranet`）都更新到 2.3.6；干净 git 克隆 pull 成功、有改动的 git 克隆跳过；再次运行显示已最新；`checkDiskVersion` 用 node 模拟过。后续真实验证：维护者电脑计划任务注册成功、磁盘变新后插件自动 reload 成功（2.3.8→2.3.9 时旧页面提示条失效即因此，已修）。2.4.1 起只走内网，git 仓库目录一律跳过。
+- **静默自动更新（2026-11-17，方案 A）**：同事在插件目录双击“安装自动更新.bat”后，计划任务每 5 分钟（2.4.5 起，之前每小时）跑 `updater/auto-update.ps1` 覆盖文件；`background.js` 每 1 分钟（alarm `meiktv-disk-check`，2.4.5 起）+ 浏览器启动时 `checkDiskVersion()`：fetch `chrome.runtime.getURL('manifest.json')`（已解压插件读的是磁盘实时文件），比运行中版本新就 `chrome.runtime.reload()`。弹窗读 `updater/status.json` 显示“自动更新：已开启/未开启/超过 1 小时没运行”。已实测：2.3.5 副本经 GitHub、经内网（`-ForceIntranet`）都更新到 2.3.6；干净 git 克隆 pull 成功、有改动的 git 克隆跳过；再次运行显示已最新；`checkDiskVersion` 用 node 模拟过。后续真实验证：维护者电脑计划任务注册成功、磁盘变新后插件自动 reload 成功（2.3.8→2.3.9 时旧页面提示条失效即因此，已修）。2.4.1 起只走内网，git 仓库目录一律跳过。
 - 检查：每 60 分钟 + 浏览器启动 + 弹窗“立即检查”，**只走内网**（2.4.1 起；8 秒超时）。2.4.0 及以前先查 GitHub 再内网，所以 2.4.1 这一版必须也推到 GitHub，老客户端才能升上来；之后 GitHub 只是代码备份。
 - **发版流程**：
   ```bash

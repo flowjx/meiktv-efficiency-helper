@@ -138,7 +138,6 @@ async function onIdentity(identity) {
 // 已解压安装的插件读取的是磁盘上的实时文件：比较磁盘 manifest.json 与正在运行的版本，磁盘更新就 reload。
 // updater 会最后才覆盖 manifest.json，所以版本号变了说明其他文件已经复制完。
 const DISK_ALARM = 'meiktv-disk-check';
-const DISK_FAST_ALARM = 'meiktv-disk-fast'; // 弹窗点“立即更新”后，接下来 5 分钟每 30 秒检查一次
 
 async function checkDiskVersion() {
   try {
@@ -154,7 +153,8 @@ async function checkDiskVersion() {
 
 function ensureAlarms() {
   chrome.alarms.create(ALARM, { periodInMinutes: UPDATE_CONFIG.checkIntervalMinutes });
-  chrome.alarms.create(DISK_ALARM, { periodInMinutes: 5 });
+  chrome.alarms.create(DISK_ALARM, { periodInMinutes: 1 }); // 读本地文件，开销很小；updater 每 5 分钟覆盖一次
+  chrome.alarms.clear('meiktv-disk-fast'); // 2.4.3 “立即更新”留下的闹钟
 }
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -179,11 +179,6 @@ chrome.alarms.onAlarm.addListener(alarm => {
     fetchTeamConfig();
   } else if (alarm.name === DISK_ALARM) {
     checkDiskVersion();
-  } else if (alarm.name === DISK_FAST_ALARM) {
-    chrome.storage.local.get('diskWatchUntil').then(({ diskWatchUntil = 0 }) => {
-      if (Date.now() > diskWatchUntil) chrome.alarms.clear(DISK_FAST_ALARM);
-      checkDiskVersion();
-    });
   }
 });
 
@@ -194,12 +189,6 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   }
   if (msg && msg.type === 'meiktv-identity' && msg.identity) {
     onIdentity(msg.identity).then(() => sendResponse({ ok: true }));
-    return true;
-  }
-  if (msg && msg.type === 'meiktv-watch-disk') {
-    chrome.storage.local.set({ diskWatchUntil: Date.now() + 5 * 60000 })
-      .then(() => chrome.alarms.create(DISK_FAST_ALARM, { periodInMinutes: 0.5 }))
-      .then(() => sendResponse({ ok: true }));
     return true;
   }
   if (msg && msg.type === 'meiktv-check-update') {

@@ -27,7 +27,7 @@
       .then(status => {
         if (!status) return { on: false };
         const last = new Date(String(status.lastRun).replace(' ', 'T'));
-        const stale = Number.isFinite(last.getTime()) && Date.now() - last.getTime() > 3 * 3600 * 1000;
+        const stale = Number.isFinite(last.getTime()) && Date.now() - last.getTime() > 3600 * 1000;
         return { on: true, stale, status, lastText: String(status.lastRun || '').slice(5, 16) };
       });
   }
@@ -48,7 +48,7 @@
     }
     const s = auto.status;
     let text = `自动更新：已开启 · 上次运行 ${auto.lastText}`;
-    if (auto.stale) text += '，已超过 3 小时没有运行，可能已被关闭';
+    if (auto.stale) text += '，已超过 1 小时没有运行，可能已被关闭';
     else if (s.result === 'error') text += `，${s.message}`;
     else if (s.result === 'updated') text += `，${s.message}`;
     else if (s.result === 'skipped') text += `，${s.message}`;
@@ -90,21 +90,15 @@
         note.hidden = false;
         note.textContent = `新版本 ${diskVersion} 已下载好，几分钟内会自动生效，也可以点下面按钮立即生效。`;
         $('reload-now').hidden = false;
-        $('update-now').hidden = true;
         $('manual').hidden = true;
       } else if (auto.on && !auto.stale && auto.status.result !== 'error' && auto.status.result !== 'skipped') {
         note.hidden = false;
-        const canRun = Boolean(auto.status.protocol);
-        note.textContent = canRun
-          ? '已开启自动更新，1 小时内会自动安装；也可以点下面按钮立即更新。'
-          : '已开启自动更新，1 小时内会自动安装。想马上更新：在插件目录再双击一次“安装自动更新.bat”（之后这里会出现“立即更新”按钮）。';
-        $('update-now').hidden = !canRun;
+        note.textContent = '已开启自动更新，几分钟内会自动安装新版本并重新加载插件，无需任何操作。';
         $('reload-now').hidden = true;
         $('manual').hidden = true;
       } else {
         note.hidden = true;
         $('reload-now').hidden = true;
-        $('update-now').hidden = true;
         $('manual').hidden = false;
         document.querySelectorAll('.download').forEach(a => { a.href = UPDATE_CONFIG.zipUrl; });
       }
@@ -143,13 +137,5 @@
   };
   $('reload').addEventListener('click', reload);
 
-  // 立即更新：打开“安装自动更新.bat”注册的链接协议，Windows 在后台跑一次 updater（浏览器首次会问是否打开，勾选“始终允许”）。
-  // 弹窗随后会关闭，由后台在接下来几分钟里每 30 秒看一次磁盘版本，变新就自动重新加载插件。
-  $('update-now').addEventListener('click', async () => {
-    await chrome.runtime.sendMessage({ type: 'meiktv-watch-disk' }).catch(() => {});
-    chrome.tabs.update({ url: 'meiktv-helper-update:run' });
-    $('update-now').disabled = true;
-    $('update-now').textContent = '正在后台更新，约 1 分钟后插件自动重新加载…';
-  });
   $('reload-now').addEventListener('click', reload);
 })();

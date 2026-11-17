@@ -1,4 +1,4 @@
-﻿# 魅KTV效率助手 —— 自动更新（由定时任务每小时调用，也可手动运行）
+﻿# 魅KTV效率助手 —— 自动更新（由定时任务每 5 分钟调用，也可手动运行）
 # 流程：读本地 manifest 版本 → 从公司内网更新服务查最新版本 → 有新版则：
 #   · 插件目录是 git 仓库（开发目录）：跳过，不用 zip 覆盖 git 仓库；
 #   · 否则下载 zip → 校验 zip 内版本 → 覆盖插件目录（manifest.json 最后覆盖，插件据此自动重新加载）。
@@ -30,7 +30,6 @@ function Save-Status([string]$result, [string]$message, $remote) {
     localVersion  = (Get-LocalVersion)
     remoteVersion = if ($remote) { $remote.version } else { '' }
     source        = if ($remote) { $remote.source } else { '' }
-    protocol      = (Test-Path 'HKCU:\Software\Classes\meiktv-helper-update\shell\open\command')   # 弹窗据此显示“立即更新”按钮
   }
   try {
     [IO.File]::WriteAllText($StatusFile, ($status | ConvertTo-Json), (New-Object Text.UTF8Encoding($false)))
@@ -67,6 +66,25 @@ function Get-Remote($cfg) {
   return [ordered]@{ version = [string]$j.version; zip = $cfg.zipUrl; source = 'intranet' }
 }
 
+# 2.4.4 及以前装的定时任务是每小时一次：自动改成每 5 分钟（保留“登录时”触发器），并清理 2.4.3 的旧链接协议
+function Update-TaskSchedule {
+  try {
+    $task = Get-ScheduledTask -TaskName 'MeiktvHelperAutoUpdate' -ErrorAction SilentlyContinue
+    if (-not $task) { return }
+    $timeTrig = $task.Triggers | Where-Object { $_.CimClass.CimClassName -eq 'MSFT_TaskTimeTrigger' } | Select-Object -First 1
+    if ($timeTrig -and $timeTrig.Repetition.Interval -ne 'PT5M') {
+      $every5 = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(5) -RepetitionInterval (New-TimeSpan -Minutes 5) -RepetitionDuration (New-TimeSpan -Days 3650)
+      $others = @($task.Triggers | Where-Object { $_.CimClass.CimClassName -ne 'MSFT_TaskTimeTrigger' })
+      Set-ScheduledTask -TaskName 'MeiktvHelperAutoUpdate' -Trigger (@($every5) + $others) | Out-Null
+      Write-Log '定时任务已改为每 5 分钟运行一次'
+    }
+    $proto = 'HKCU:\Software\Classes\meiktv-helper-update'
+    if (Test-Path $proto) { Remove-Item $proto -Recurse -Force -ErrorAction SilentlyContinue }
+  } catch {
+    Write-Log "调整定时任务频率失败：$($_.Exception.Message)"
+  }
+}
+
 function Test-Newer([string]$remote, [string]$local) {
   try { return ([version]$remote) -gt ([version]$local) } catch { return $false }
 }
@@ -84,6 +102,8 @@ try {
   if ((Test-Path $LogFile) -and (Get-Item $LogFile).Length -gt 1MB) {
     Move-Item $LogFile "$LogFile.1" -Force
   }
+
+  if (-not $DryRun) { Update-TaskSchedule }
 
   $local = Get-LocalVersion
   $cfg = Get-UpdateConfig
