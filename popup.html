@@ -21,6 +21,9 @@
   <section id="update" class="update" hidden>
     <div id="notes-title" class="notes-title"></div>
     <ul id="notes"></ul>
+    <div id="auto-note" class="auto-note" hidden></div>
+    <button id="reload-now" type="button" class="primary" hidden>新版本已下载，立即重新加载插件</button>
+    <div id="manual">
     <ol class="steps">
       <li id="step-github">用 git 安装的：在插件目录执行 <code>git pull</code>；<br>下载安装的：<a class="download" href="#" target="_blank">下载最新压缩包</a>，解压后<b>覆盖</b>原插件目录的文件。</li>
       <li id="step-intranet" hidden>GitHub 暂时连不上，已改从公司内网获取：<a class="download" href="#" target="_blank">下载最新压缩包（内网）</a>，解压后把里面的文件<b>覆盖</b>到原插件目录。</li>
@@ -28,11 +31,12 @@
     </ol>
     <div id="source" class="source"></div>
     <button id="reload" type="button" class="primary">我已替换文件，重新加载插件</button>
+    </div>
   </section>
 
   <div id="auto-update" class="auto-update"></div>
 
-  <details id="au-guide" class="au-guide">
+  <details id="au-guide" class="au-guide" hidden>
     <summary>按照如下步骤开启自动更新</summary>
     <ol class="steps">
       <li>打开插件目录 <a href="#" id="open-details">不知道在哪？</a></li>
