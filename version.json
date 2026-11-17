@@ -1,11 +1,19 @@
 {
-  "version": "2.3.8",
+  "version": "2.3.9",
   "date": "2026-11-17",
   "notes": [
-    "插件弹窗新增自动更新开启指引：打开插件目录，双击“安装自动更新.bat”即可"
+    "插件弹窗按自动更新状态显示：已开启时不再显示手动替换步骤，新版下载好后可一键立即生效",
+    "修复：插件自动更新后，页面上的新版本提示条点“知道了”没反应"
   ],
   "download": "https://github.com/flowjx/meiktv-efficiency-helper/archive/refs/heads/main.zip",
   "history": [
+    {
+      "version": "2.3.8",
+      "date": "2026-11-17",
+      "notes": [
+        "插件弹窗新增自动更新开启指引：打开插件目录，双击“安装自动更新.bat”即可"
+      ]
+    },
     {
       "version": "2.3.7",
       "date": "2026-11-17",
