@@ -11,7 +11,7 @@
 4. **禅道成功时也会 `alert('保存成功')`**——成败一律以结果为准（版本列表里出现、历史记录里出现），不要凭 alert 判断。
 5. 用户要求的交互要**和禅道原生一致**（例如概况必须是禅道原生弹窗，不要自制弹窗）。
 6. 本机 git push 到 GitHub 经常 `SSL_ERROR_SYSCALL`，重试几次即可；推完用 `git ls-remote origin main` 对比 `git rev-parse HEAD` 确认。2.4.1 起 GitHub 只是代码备份，推不上去不影响发版。
-7. **更新只走内网 5.36**（2.4.1 起）：发版 = `git branch -f release HEAD`，内网服务 `server/install_server.py` 只发 `release` 分支。维护者自己的开发目录是 git 仓库，自动更新会跳过它（Chrome 里加载的就是这个目录）。
+7. **更新只走内网 5.36**（2.4.1 起）：发版 = `git branch -f release HEAD`，内网服务 `server/install_server.py` 只发 `release` 分支。维护者自己的开发目录（Chrome 里加载的就是这个 git 仓库）靠**插件目录之外**的清单 `%LOCALAPPDATA%\MeiktvHelper\dev-dirs.txt`（每行一个完整路径，不提交）让自动更新跳过；2.4.5 及以前是看有没有 `.git`，同事直接拷开发目录连 `.git` 一起拷过去就永远不更新了（2.4.6 改）。换开发电脑要重新建这个清单，否则自动更新会用 zip 覆盖开发代码。
 8. 核对禅道数据时注意**列表默认分页 20 条**（实际 38+ 条），用 `recPerPage` 拉全量；插件自己会加载全部分页。曾因只看第一页漏掉 #038，误判“你名下没有超期单”。
 
 ## 1. 这是什么
@@ -49,7 +49,7 @@ Chrome/Edge **Manifest V3** 插件（以“加载已解压的扩展程序”方�
 | `zentao-create-main.js` | MAIN 环境：提交测试页的项目锁定、新建版本弹窗、默认抄送（操作禅道 jQuery/chosen 必须在页面环境；MAIN 环境不能用 chrome.* API） |
 | `zentao-sign.js` | 隔离环境：提交测试页改“测试负责人”文案、admin 拦截、把抄送名单写到 `<html data-mkz-mailto>` 给 MAIN 脚本；编辑页锁定历史签名 |
 | `version.json` | 最新版本信息 `version/date/notes/download/history`，插件读内网服务发出的这个文件（release 分支上的版本） |
-| `updater/auto-update.ps1` | 自动更新脚本（UTF-8 **带 BOM**，PS 5.1 才能正确读中文；用 Python 改时注意保留 BOM）：先 `Update-TaskSchedule`（老任务每小时 → 每 5 分钟，保留登录触发器，删 2.4.3 旧协议）→ 读本地 manifest 版本 → 从内网查最新（`versionUrl`/`zipUrl` 从 `update-config.js` 正则读出）→ git 仓库（开发目录）直接跳过；否则下载 zip、校验 zip 内版本等于 version.json、robocopy 覆盖（**manifest.json 最后复制**）。写 `updater/status.json`、`updater/update.log`（均 gitignore）。参数 `-DryRun` |
+| `updater/auto-update.ps1` | 自动更新脚本（UTF-8 **带 BOM**，PS 5.1 才能正确读中文；用 Python 改时注意保留 BOM）：先 `Update-TaskSchedule`（老任务每小时 → 每 5 分钟，保留登录触发器，删 2.4.3 旧协议）→ 读本地 manifest 版本 → 从内网查最新（`versionUrl`/`zipUrl` 从 `update-config.js` 正则读出）→ 插件目录在 `%LOCALAPPDATA%\MeiktvHelper\dev-dirs.txt` 清单里（开发目录）直接跳过；否则下载 zip、校验 zip 内版本等于 version.json、robocopy 覆盖（**manifest.json 最后复制**）。写 `updater/status.json`、`updater/update.log`（均 gitignore）。参数 `-DryRun` |
 | `updater/install-updater.ps1` | 注册/删除当前用户的计划任务 `MeiktvHelperAutoUpdate`（每 5 分钟 + 登录时；登录触发器建不了就只用每 5 分钟；顺手删除 2.4.3 的旧链接协议），动作 `wscript run-hidden.vbs`。`-Uninstall`、`-DryRun` |
 | `updater/run-hidden.vbs` | 隐藏窗口启动 auto-update.ps1；**只用 ASCII**，路径运行时从自身位置推出（插件路径可能含中文） |
 | `安装自动更新.bat` / `卸载自动更新.bat` | 插件根目录，双击调用 install-updater.ps1 |
@@ -124,7 +124,7 @@ Chrome/Edge **Manifest V3** 插件（以“加载已解压的扩展程序”方�
 - **更新源只有内网**（2.4.1 起）：`update-config.js` 的 `versionUrl`/`zipUrl` = `http://172.16.5.36:8790/update/...`；插件后台每 60 分钟 + 浏览器启动 + 弹窗“立即检查”查 version.json（8 秒超时），只用于角标/提示条/弹窗显示。不在公司网络时检查失败属正常。
 - **自动更新**（同事双击一次 `安装自动更新.bat`）：
   - 计划任务 `MeiktvHelperAutoUpdate`（当前用户、Interactive、无需管理员）：每 5 分钟 + 登录时，动作 `wscript run-hidden.vbs` → `auto-update.ps1`。
-  - `auto-update.ps1`：git 仓库目录直接跳过；否则下载内网 zip → 校验 zip 内 manifest 版本 = version.json → robocopy 覆盖（不删多余文件，`manifest.json` 最后复制）→ 写 `updater/status.json`（`lastRun/result/message/localVersion/remoteVersion/source`）和 `update.log`（只记有事件的运行，1MB 轮转）。`%TEMP%` 锁文件防并发。
+  - `auto-update.ps1`：登记在本机开发目录清单里的目录直接跳过（有 `.git` 不影响，robocopy 也不碰 `.git`）；否则下载内网 zip → 校验 zip 内 manifest 版本 = version.json → robocopy 覆盖（不删多余文件，`manifest.json` 最后复制）→ 写 `updater/status.json`（`lastRun/result/message/localVersion/remoteVersion/source`）和 `update.log`（只记有事件的运行，1MB 轮转）。`%TEMP%` 锁文件防并发。
   - 插件 `background.js`：alarm `meiktv-disk-check` 每 1 分钟 + 浏览器启动时 `checkDiskVersion()`，fetch `chrome.runtime.getURL('manifest.json')`（已解压插件读磁盘实时文件），比运行中版本新就 `chrome.runtime.reload()`。发版到生效一般 5～6 分钟。
   - 老客户端过渡：2.4.4 及以前装的任务是每小时一次，装上 2.4.5 后下一次运行由 `Update-TaskSchedule` 自动改成每 5 分钟，不用重新双击 bat。
   - 已真实验证：维护者电脑任务注册、磁盘变新后自动 reload、每小时→每 5 分钟迁移、全新安装为 5 分钟；同事 Edge 电脑靠自动更新从 2.3.x 升到 2.4.3（截图确认）。

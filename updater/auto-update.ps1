@@ -1,6 +1,6 @@
 ﻿# 魅KTV效率助手 —— 自动更新（由定时任务每 5 分钟调用，也可手动运行）
 # 流程：读本地 manifest 版本 → 从公司内网更新服务查最新版本 → 有新版则：
-#   · 插件目录是 git 仓库（开发目录）：跳过，不用 zip 覆盖 git 仓库；
+#   · 插件目录登记在本机开发目录清单（%LOCALAPPDATA%\MeiktvHelper\dev-dirs.txt）里：跳过，不覆盖开发代码；
 #   · 否则下载 zip → 校验 zip 内版本 → 覆盖插件目录（manifest.json 最后覆盖，插件据此自动重新加载）。
 # 结果写 updater\status.json（插件弹窗读取），日志写 updater\update.log。
 param(
@@ -85,6 +85,21 @@ function Update-TaskSchedule {
   }
 }
 
+# 开发目录清单放在插件目录之外（%LOCALAPPDATA%\MeiktvHelper\dev-dirs.txt，每行一个完整路径），
+# 整个拷贝插件文件夹时不会带过去；拷到别的电脑或同机别的路径都照常更新。（2.4.5 及以前是看有没有 .git）
+$DevListFile = Join-Path $env:LOCALAPPDATA 'MeiktvHelper\dev-dirs.txt'
+function Test-DevDir {
+  if (-not (Test-Path $DevListFile)) { return $false }
+  $norm = { param($p) ([IO.Path]::GetFullPath($p.Trim())).TrimEnd('\').ToLowerInvariant() }
+  $me = & $norm $PluginDir
+  foreach ($line in [IO.File]::ReadAllLines($DevListFile, [Text.Encoding]::UTF8)) {
+    if ($line.Trim() -and -not $line.Trim().StartsWith('#')) {
+      try { if ((& $norm $line) -eq $me) { return $true } } catch { }
+    }
+  }
+  return $false
+}
+
 function Test-Newer([string]$remote, [string]$local) {
   try { return ([version]$remote) -gt ([version]$local) } catch { return $false }
 }
@@ -126,10 +141,10 @@ try {
     exit 0
   }
 
-  # ---------- git 安装（开发目录）：不自动更新，避免 zip 覆盖 git 仓库 ----------
-  if (Test-Path (Join-Path $PluginDir '.git')) {
-    Write-Log '插件目录是 git 仓库（开发目录），跳过自动更新'
-    Save-Status 'skipped' '插件目录是 git 仓库（开发目录），不自动更新' $remote
+  # ---------- 开发目录：不自动更新，避免 zip 覆盖正在改的代码 ----------
+  if (Test-DevDir) {
+    Write-Log "插件目录登记为开发目录（$DevListFile），跳过自动更新"
+    Save-Status 'skipped' '本机登记的开发目录，不自动更新' $remote
     exit 0
   }
 

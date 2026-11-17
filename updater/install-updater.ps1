@@ -33,8 +33,9 @@ if (-not (Test-Path (Join-Path $PluginDir 'manifest.json'))) {
 Write-Host '插件目录：' $PluginDir
 Write-Host '任务名称：' $TaskName
 Write-Host '运行频率：每 5 分钟一次，另外每次登录 Windows 时运行一次'
-if (Test-Path (Join-Path $PluginDir '.git')) {
-  Write-Host '提示：插件目录是 git 仓库（开发目录），自动更新会跳过它。' -ForegroundColor Yellow
+$devList = Join-Path $env:LOCALAPPDATA 'MeiktvHelper\dev-dirs.txt'
+if ((Test-Path $devList) -and ((Get-Content $devList -Encoding UTF8) -contains $PluginDir)) {
+  Write-Host "提示：插件目录登记为本机开发目录（$devList），自动更新会跳过它。" -ForegroundColor Yellow
 }
 if ($DryRun) { Write-Host '（DryRun：未创建任务）'; exit 0 }
 
