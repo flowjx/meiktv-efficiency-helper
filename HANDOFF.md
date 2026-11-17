@@ -45,7 +45,7 @@ Chrome/Edge **Manifest V3** 插件（以“加载已解压的扩展程序”方�
 | `zentao-create-main.js` | MAIN 环境：提交测试页的项目锁定、新建版本弹窗、默认抄送（操作禅道 jQuery/chosen 必须在页面环境；MAIN 环境不能用 chrome.* API） |
 | `zentao-sign.js` | 隔离环境：提交测试页改“测试负责人”文案、admin 拦截、把抄送名单写到 `<html data-mkz-mailto>` 给 MAIN 脚本；编辑页锁定历史签名 |
 | `version.json` | 最新版本信息 `version/date/notes/download/history`，插件读 GitHub 上的这个文件 |
-| `updater/auto-update.ps1` | 自动更新脚本（UTF-8 **带 BOM**，PS 5.1 才能正确读中文）：读本地 manifest 版本 → 查最新（先 GitHub，失败走内网；地址从 `update-config.js` 正则读出）→ git 仓库只在工作区干净时 `git pull --ff-only`，否则下载 zip、校验 zip 内版本、robocopy 覆盖（**manifest.json 最后复制**）。写 `updater/status.json`、`updater/update.log`（均 gitignore）。参数 `-ForceIntranet`、`-DryRun` 用于测试 |
+| `updater/auto-update.ps1` | 自动更新脚本（UTF-8 **带 BOM**，PS 5.1 才能正确读中文）：读本地 manifest 版本 → 查最新（先 GitHub，失败走内网；地址从 `update-config.js` 正则读出）→ git 仓库只在工作区干净时 `git pull --ff-only`，否则下载 zip（GitHub 查到版本但 zip 下载失败时改从内网下载，此时只要求 zip 版本比本地新）、校验 zip 内版本、robocopy 覆盖（**manifest.json 最后复制**）。写 `updater/status.json`、`updater/update.log`（均 gitignore）。参数 `-ForceIntranet`、`-DryRun`、`-SimulateGithubZipFail` 用于测试 |
 | `updater/install-updater.ps1` | 注册/删除当前用户的计划任务 `MeiktvHelperAutoUpdate`（每小时 + 登录时；登录触发器建不了就只用每小时），动作 `wscript run-hidden.vbs`。`-Uninstall`、`-DryRun` |
 | `updater/run-hidden.vbs` | 隐藏窗口启动 auto-update.ps1；**只用 ASCII**，路径运行时从自身位置推出（插件路径可能含中文） |
 | `安装自动更新.bat` / `卸载自动更新.bat` | 插件根目录，双击调用 install-updater.ps1 |

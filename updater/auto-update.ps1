@@ -5,7 +5,8 @@
 # 结果写 updater\status.json（插件弹窗读取），日志写 updater\update.log。
 param(
   [switch]$ForceIntranet,   # 测试用：跳过 GitHub，直接走内网
-  [switch]$DryRun           # 只检查不更新
+  [switch]$DryRun,          # 只检查不更新
+  [switch]$SimulateGithubZipFail  # 测试用：模拟 GitHub zip 下载失败，验证回退内网
 )
 
 $ErrorActionPreference = 'Stop'
@@ -150,14 +151,33 @@ try {
   New-Item -ItemType Directory -Path $work | Out-Null
   try {
     $zip = Join-Path $work 'plugin.zip'
-    Invoke-WebRequest -UseBasicParsing -TimeoutSec 120 -Uri $remote.zip -OutFile $zip
+    $expected = $remote.version
+    try {
+      if ($SimulateGithubZipFail -and $remote.source -eq 'github') { throw '模拟 GitHub zip 下载失败' }
+      Invoke-WebRequest -UseBasicParsing -TimeoutSec 120 -Uri $remote.zip -OutFile $zip
+    } catch {
+      # GitHub 的版本号能查到但 zip 下载失败（raw 与 github.com 是两个域名，可能一通一不通）→ 改走内网
+      if ($remote.source -ne 'github' -or -not $cfg.intranetZipUrl) { throw }
+      Write-Log "GitHub 下载失败（$($_.Exception.Message)），改从内网下载"
+      Invoke-WebRequest -UseBasicParsing -TimeoutSec 120 -Uri $cfg.intranetZipUrl -OutFile $zip
+      $remote.source = 'intranet'
+      $remote.zip = $cfg.intranetZipUrl
+      $expected = $null   # 内网可能比 GitHub 晚一点同步：只要求比本地新
+    }
     $extract = Join-Path $work 'x'
     Expand-Archive -Path $zip -DestinationPath $extract -Force
     $manifest = Get-ChildItem -Path $extract -Recurse -Filter 'manifest.json' | Sort-Object { $_.FullName.Length } | Select-Object -First 1
     if (-not $manifest) { throw 'zip 里没有 manifest.json' }
     $src = $manifest.DirectoryName
     $zipVersion = ([IO.File]::ReadAllText($manifest.FullName, [Text.Encoding]::UTF8) | ConvertFrom-Json).version
-    if ($zipVersion -ne $remote.version) { throw "zip 版本 $zipVersion 与 version.json 的 $($remote.version) 不一致" }
+    if ($expected) {
+      if ($zipVersion -ne $expected) { throw "zip 版本 $zipVersion 与 version.json 的 $expected 不一致" }
+    } elseif (-not (Test-Newer $zipVersion $local)) {
+      Write-Log "内网 zip 版本 $zipVersion 不比本地 $local 新，暂不更新"
+      Save-Status 'latest' "GitHub 下载失败，内网暂无更新的版本（$zipVersion）" $remote
+      return
+    }
+    $remote.version = $zipVersion
 
     # 先复制除 manifest.json 外的所有文件（不删除本地多出来的文件），最后复制 manifest.json
     & robocopy $src $PluginDir /E /XF manifest.json /XD .git /R:2 /W:1 /NFL /NDL /NJH /NJS /NP | Out-Null
