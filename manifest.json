@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "魅KTV效率助手",
-  "version": "2.3.6",
+  "version": "2.3.7",
   "description": "在门店管理页面批量选择门店，在音乐页面批量添加播放列表和歌手，增强禅道测试单列表（统计、进度、搜索）。",
   "action": {
     "default_title": "魅KTV效率助手",
