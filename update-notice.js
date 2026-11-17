@@ -31,8 +31,11 @@
     btn.textContent = '知道了';
     btn.style.cssText = 'margin-top:6px;padding:2px 10px;border:0;border-radius:4px;background:#e8336d;color:#fff;cursor:pointer;font:inherit';
     btn.addEventListener('click', () => {
-      chrome.storage.local.set({ dismissedUpdate: update.latest });
+      // 先关掉：插件在页面打开后被重新加载过（如自动更新）时，旧页面里调用 chrome.* 会直接抛错
       box.remove();
+      try {
+        chrome.storage.local.set({ dismissedUpdate: update.latest }).catch(() => {});
+      } catch (_) { /* 插件已重新加载，忽略 */ }
     });
 
     box.append(title, desc, hint, btn);
@@ -42,4 +45,15 @@
   chrome.storage.local.get(['update', 'dismissedUpdate']).then(({ update, dismissedUpdate }) => {
     if (update && update.hasUpdate && update.latest && update.latest !== dismissedUpdate) show(update);
   }).catch(() => { /* 插件刚被重新加载时旧页面里的脚本会失效，忽略 */ });
+
+  // 已经更新到新版（hasUpdate 变为 false）时，自动收起已显示的提示条
+  try {
+    chrome.storage.onChanged.addListener(changes => {
+      const u = changes.update && changes.update.newValue;
+      if (u && !u.hasUpdate) {
+        const box = document.getElementById(ID);
+        if (box) box.remove();
+      }
+    });
+  } catch (_) { /* ignore */ }
 })();
