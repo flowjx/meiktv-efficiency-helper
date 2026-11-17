@@ -101,3 +101,19 @@ footer a { color: #2e7fff; }
 .auto-update.is-on { background: #e8f7ef; color: #1f8a55; }
 .auto-update.is-off { background: #f5f7fa; color: #646a73; }
 .auto-update.is-warn { background: #fff4e0; color: #b86e00; }
+
+.au-guide {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #646a73;
+}
+
+.au-guide summary {
+  cursor: pointer;
+  color: #2e7fff;
+  user-select: none;
+}
+
+.au-guide .steps { margin: 6px 0 6px; }
+.au-guide .steps button { display: block; margin-top: 4px; font-size: 12px; }
+.au-tip { color: #8f959e; }
